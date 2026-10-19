@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # 봇 허브 ↔ 클로드 데일리 써머리 연결 (Mac·Windows 공용). 입력: argv[1]=기능, stdin=JSON / 출력: JSON
 #   Mac     : ~/claude-daily-summary,           PC 이름 mac,     상태 표시줄 기록 있음
-#   Windows : %USERPROFILE%\Downloads\claude-daily-summary, PC 이름 windows, 상태 표시줄 기록 없음
+#   Windows : %USERPROFILE%\Downloads\claude-daily-summary, PC 이름 windows, 상태 표시줄 기록 ~/.claude/rate-limits-cache.json
 import json, os, platform, re, shutil, subprocess, sys, time, urllib.request
 from datetime import datetime
 
@@ -14,6 +14,7 @@ DAILY = next((d for d in (os.environ.get("CLAUDE_DAILY_DIR"),
 SCRIPT = DAILY and os.path.join(DAILY, "claude_daily.py")
 RUNS = os.environ.get("BOT_HUB_RUNS") or os.path.join(HERE, "..", "..", "runs")
 STATUS = os.path.join(HOME, ".cache", "claude-statusline", "last_input.json")
+RATE_CACHE = os.path.join(HOME, ".claude", "rate-limits-cache.json")  # Windows 상태 표시줄(statusline.py)이 남기는 공식 한도 값
 DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
@@ -30,7 +31,7 @@ def need_daily():
 
 
 def py(*args, cwd=None):
-    p = subprocess.run([sys.executable, "-I", *args], capture_output=True, text=True, encoding="utf-8", cwd=cwd or DAILY or HOME,
+    p = subprocess.run([sys.executable, "-I", "-X", "utf8", *args], capture_output=True, text=True, encoding="utf-8", cwd=cwd or DAILY or HOME,
                        env=dict(os.environ, PYTHONUTF8="1", PYTHONIOENCODING="utf-8"))
     return p.returncode == 0, (p.stdout + ("\n" + p.stderr if p.stderr.strip() else "")).strip()
 
@@ -43,12 +44,16 @@ def when(e):
 
 
 def now(q):
-    # 계정 한도 %: 상태 표시줄이 마지막으로 받은 값(Mac만 있음) / 토큰: 이 PC의 Claude Code 기록
+    # 계정 한도 %: 상태 표시줄이 마지막으로 받은 값 (Mac: last_input.json, Windows: rate-limits-cache.json) / 토큰: 이 PC의 Claude Code 기록
     try:
         rl = json.load(open(STATUS, encoding="utf-8")).get("rate_limits") or {}
         age = int(time.time() - os.path.getmtime(STATUS))
     except (OSError, ValueError):
-        rl, age = {}, None
+        try:
+            rl = json.load(open(RATE_CACHE, encoding="utf-8"))
+            age = int(time.time() - rl.get("ts", os.path.getmtime(RATE_CACHE)))
+        except (OSError, ValueError):
+            rl, age = {}, None
     h5, d7 = rl.get("five_hour") or {}, rl.get("seven_day") or {}
     ok, tk = py(os.path.join(HERE, "window_tokens.py"), str(h5.get("resets_at") or ""), str(d7.get("resets_at") or ""), cwd=HERE)
     t5, t7, td = (tk.splitlines()[-1].split("|") + ["-", "-", "-"])[:3] if ok and tk else ("-", "-", "-")

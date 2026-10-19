@@ -15,7 +15,7 @@ def out(**kw):
 
 
 def call(*args):
-    p = subprocess.run([sys.executable, "-I", SCRIPT, "--json", *args], capture_output=True, text=True, encoding="utf-8",
+    p = subprocess.run([sys.executable, "-I", "-X", "utf8", SCRIPT, "--json", *args], capture_output=True, text=True, encoding="utf-8",
                        env=dict(os.environ, PYTHONUTF8="1", PYTHONIOENCODING="utf-8"))
     try:
         return json.loads(p.stdout)

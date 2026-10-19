@@ -53,11 +53,11 @@ def run(bot_id, action_id, params):
     if not action:
         return {"ok": False, "text": f"알 수 없는 봇/기능: {bot_id}/{action_id}"}
     adapter = os.path.join(BOTS, bot_id, "adapter.py")
-    # Windows 기본 인코딩(cp949)에서도 한글이 깨지지 않게 봇은 항상 UTF-8로 주고받는다
+    # Windows 기본 인코딩(cp949)에서도 한글이 깨지지 않게 봇은 항상 UTF-8로 주고받는다 (-I 는 PYTHONUTF8 등 환경변수를 무시하므로 -X utf8 로 지정)
     env = dict(os.environ, BOT_HUB_RUNS=RUNS, PYTHONUTF8="1", PYTHONIOENCODING="utf-8")
     t0 = time.time()
     try:
-        p = subprocess.run([sys.executable, "-I", adapter, action_id], input=json.dumps(params, ensure_ascii=False),
+        p = subprocess.run([sys.executable, "-I", "-X", "utf8", adapter, action_id], input=json.dumps(params, ensure_ascii=False),
                            capture_output=True, text=True, encoding="utf-8", cwd=os.path.dirname(adapter), env=env,
                            timeout=action.get("timeout", 300))
         try:
