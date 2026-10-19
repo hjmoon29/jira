@@ -1,0 +1,54 @@
+{
+  "name": "Jira 하위 문서 생성",
+  "icon": "📋",
+  "order": 10,
+  "description": "제품 프로젝트 문서(에픽)에 하위 문서를 만듭니다. 제목은 '[머리말] 제품명 문서 제목' 형식이고, 에픽에 이미 있는 문서는 건너뜁니다.",
+  "actions": [
+    {
+      "id": "command",
+      "label": "명령으로 생성",
+      "button": "실행",
+      "timeout": 120,
+      "fields": [
+        {"name": "text", "label": "명령", "type": "text", "required": true,
+         "placeholder": "대만향 아이콘3 프로젝트 문서에 기본 하위 문서들을 생성해줘",
+         "help": "예) 대만향 아이콘3 프로젝트 문서에 기본 하위 문서들을 생성해줘\n예) 대만향 아이콘 프로 문서에 '현지 인증 일정 정리', 'DR3 체크리스트' 하위 문서 만들어줘"}
+      ]
+    },
+    {
+      "id": "defaults",
+      "label": "기본 하위 문서",
+      "button": "미리보기",
+      "timeout": 120,
+      "fields": [
+        {"name": "product", "label": "제품명", "type": "text", "required": true, "placeholder": "대만향 아이콘3", "suggest_action": "products"},
+        {"name": "epic", "label": "프로젝트 문서(에픽) 키 — 비우면 자동으로 찾음", "type": "text", "placeholder": "IOCARERENEW2023-2597"},
+        {"name": "assignee", "label": "담당자 — 비우면 제품 등록값 또는 에픽 담당자", "type": "text", "placeholder": "이름 또는 이메일"}
+      ]
+    },
+    {
+      "id": "custom",
+      "label": "별도 하위 문서",
+      "button": "미리보기",
+      "timeout": 120,
+      "fields": [
+        {"name": "product", "label": "제품명", "type": "text", "required": true, "placeholder": "대만향 아이콘3", "suggest_action": "products"},
+        {"name": "titles", "label": "문서 제목 (한 줄에 하나) — 제품명 뒤에 붙습니다", "type": "textarea", "required": true,
+         "placeholder": "현지 인증 일정 정리\nDR3 체크리스트"},
+        {"name": "epic", "label": "프로젝트 문서(에픽) 키 — 비우면 자동으로 찾음", "type": "text", "placeholder": "IOCARERENEW2023-2597"},
+        {"name": "assignee", "label": "담당자 — 비우면 제품 등록값 또는 에픽 담당자", "type": "text", "placeholder": "이름 또는 이메일"}
+      ]
+    },
+    {"id": "settings", "label": "설정", "auto": true, "timeout": 30, "fields": []},
+    {"id": "save_settings", "label": "설정 저장", "hidden": true, "timeout": 30},
+    {"id": "products", "label": "제품 목록", "hidden": true, "timeout": 30},
+    {"id": "apply", "label": "생성", "hidden": true, "timeout": 600},
+    {
+      "id": "user",
+      "label": "담당자 찾기",
+      "button": "찾기",
+      "timeout": 30,
+      "fields": [{"name": "query", "label": "이름 또는 이메일", "type": "text", "required": true, "placeholder": "최린아"}]
+    }
+  ]
+}

@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>봇 허브</title>
+<style>
+:root {
+  --bg: #F4F5F7; --panel: #FFFFFF; --fg: #1B1F24; --muted: #616A75; --line: #DDE1E6; --chip: #ECEFF3;
+  --accent: #2F5BD3; --accent-soft: #E3EAFB; --ok: #1F8A4C; --ok-soft: #E1F3E8; --bad: #C2412D; --bad-soft: #FBE6E2;
+  --warn: #A86B00; --warn-soft: #FDF1D8;
+  --sans: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111418; --panel: #1A1E24; --fg: #E6E9ED; --muted: #98A2AE; --line: #2C323A; --chip: #242A31;
+    --accent: #7FA2F5; --accent-soft: #1E2A44; --ok: #5BC98A; --ok-soft: #173325; --bad: #F08A73; --bad-soft: #3A221D;
+    --warn: #E8B24F; --warn-soft: #3A2E15; color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 var(--sans); }
+button, input, select, textarea { font: inherit; color: inherit; }
+.app { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 100vh; }
+@media (max-width: 760px) { .app { grid-template-columns: minmax(0, 1fr); } }
+
+aside { background: var(--panel); border-right: 1px solid var(--line); padding: 20px 14px; display: flex; flex-direction: column; gap: 6px; }
+@media (max-width: 760px) { aside { border-right: 0; border-bottom: 1px solid var(--line); } }
+.brand { font-size: 18px; font-weight: 700; padding: 0 8px 12px; }
+.brand small { display: block; font-size: 12px; font-weight: 400; color: var(--muted); }
+.bot { display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: center; text-align: left; width: 100%;
+  border: 1px solid transparent; background: none; border-radius: 10px; padding: 10px; cursor: pointer; }
+.bot:hover { background: var(--chip); }
+.bot[aria-current="true"] { background: var(--accent-soft); border-color: var(--accent); }
+.bot .ic { font-size: 20px; text-align: center; }
+.bot b { display: block; font-size: 14px; }
+.bot span { display: block; font-size: 12px; color: var(--muted); }
+.addbot { margin-top: auto; font-size: 12px; color: var(--muted); padding: 12px 8px 0; border-top: 1px solid var(--line); }
+.addbot code { font-family: var(--mono); font-size: 11px; background: var(--chip); padding: 1px 5px; border-radius: 4px; }
+
+main { padding: 24px clamp(16px, 3vw, 36px) 48px; display: grid; gap: 18px; align-content: start; max-width: 1100px; width: 100%; }
+.head h1 { margin: 0; font-size: 22px; }
+.head p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.tab { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 6px 14px; font-size: 13px; cursor: pointer; }
+.tab[aria-selected="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+section.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; min-width: 0; }
+h2 { margin: 0 0 12px; font-size: 13px; color: var(--muted); font-weight: 700; letter-spacing: .03em; }
+
+form { display: grid; gap: 14px; }
+.row { display: grid; gap: 6px; }
+.row > label, .row > .lb { font-size: 13px; font-weight: 600; }
+.req { color: var(--bad); margin-left: 2px; }
+input[type=text], input[type=date], select, textarea { width: 100%; border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 8px 10px; }
+textarea { min-height: 96px; resize: vertical; font-family: var(--mono); font-size: 13px; }
+input:focus, select:focus, textarea:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.radios { display: flex; gap: 16px; flex-wrap: wrap; font-size: 14px; }
+.check { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+.btn { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 8px 16px; cursor: pointer; font-weight: 600; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.danger { background: var(--bad); border-color: var(--bad); color: #fff; }
+.btn:disabled { opacity: .5; cursor: progress; }
+.actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+.status { font-size: 13px; padding: 8px 12px; border-radius: 8px; }
+.status.ok { background: var(--ok-soft); color: var(--ok); }
+.status.bad { background: var(--bad-soft); color: var(--bad); }
+.status.run { background: var(--chip); color: var(--muted); }
+pre.out { margin: 0; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px; font: 12.5px/1.6 var(--mono); overflow-x: auto; white-space: pre-wrap; word-break: break-word; max-height: 520px; overflow-y: auto; }
+details summary { cursor: pointer; font-size: 13px; color: var(--muted); margin-top: 10px; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.kpi { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 4px; }
+.kpi span { font-size: 12px; color: var(--muted); }
+.kpi b { font-size: 24px; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.kpi b small { font-size: 13px; font-weight: 500; color: var(--muted); margin-left: 3px; }
+.gauge { height: 8px; border-radius: 4px; background: var(--chip); overflow: hidden; }
+.gauge i { display: block; height: 100%; background: var(--ok); }
+.gauge i.warn { background: var(--warn); } .gauge i.crit { background: var(--bad); }
+.note { font-size: 12px; color: var(--muted); margin: 10px 0 0; }
+
+.planmeta { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+.planmeta b { color: var(--fg); }
+.tbl { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; color: var(--muted); font-weight: 500; font-size: 12px; padding: 0 8px 6px 0; border-bottom: 1px solid var(--line); }
+td { padding: 7px 8px 7px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr.off td:not(:first-child) { opacity: .45; }
+.pill { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+.pill.new { background: var(--accent-soft); color: var(--accent); }
+.pill.have { background: var(--chip); color: var(--muted); }
+.pill.sim { background: var(--warn-soft); color: var(--warn); }
+.pill.made { background: var(--ok-soft); color: var(--ok); }
+a { color: var(--accent); }
+
+.hist { display: grid; gap: 0; }
+.hist div { display: grid; grid-template-columns: 92px 1fr auto; gap: 10px; font-size: 13px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.hist div:last-child { border-bottom: 0; }
+.hist time { color: var(--muted); font-variant-numeric: tabular-nums; }
+.hist em { font-style: normal; color: var(--muted); }
+.empty { color: var(--muted); font-size: 13px; }
+.help { font-size: 12px; color: var(--muted); line-height: 1.6; }
+.muted { color: var(--muted); font-size: 12px; }
+#result h3 { font-size: 14px; margin: 22px 0 8px; }
+#result h3:first-of-type { margin-top: 0; }
+#result h3 small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; margin-top: 2px; }
+table.edit input, table.edit textarea, input.sm { width: 100%; border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 5px 8px; font-size: 13px; }
+input.sm { width: 110px; }
+table.edit textarea { min-height: 80px; margin-top: 6px; }
+table.edit td { vertical-align: top; }
+table.edit details summary { margin-top: 4px; font-size: 12px; }
+.nowrap { white-space: nowrap; }
+.ibtn { border: 1px solid var(--line); background: var(--panel); border-radius: 6px; width: 28px; height: 28px; cursor: pointer; margin-left: 2px; }
+.ibtn:disabled { opacity: .3; cursor: default; }
+.ibtn.del:hover { border-color: var(--bad); color: var(--bad); }
+#result > .btn { margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="brand">봇 허브<small>업무 봇을 한 곳에서 실행</small></div>
+    <nav id="bots" aria-label="봇 목록"></nav>
+    <div class="addbot">봇 추가: <code>bots/&lt;이름&gt;/</code> 폴더에 <code>bot.json</code> + <code>adapter.py</code> 를 넣고 새로 고침</div>
+  </aside>
+  <main>
+    <div class="head"><h1 id="title">불러오는 중…</h1><p id="desc"></p></div>
+    <div class="tabs" id="tabs" role="tablist"></div>
+    <section class="card" id="formcard"><form id="form" novalidate></form></section>
+    <section class="card" id="resultcard" hidden><h2>결과</h2><div id="result"></div></section>
+    <section class="card"><h2>최근 실행</h2><div class="hist" id="hist"></div></section>
+  </main>
+</div>
+<script>
+const KEY = "__HUB_KEY__";
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+let bots = [], bot = null, action = null, busy = false;
+const drafts = {};  // 봇·기능별 입력값 유지
+
+async function api(path, body) {
+  const r = await fetch(path, { method: body ? "POST" : "GET", headers: { "X-Hub-Key": KEY, "Content-Type": "application/json" }, body: body && JSON.stringify(body) });
+  return r.json();
+}
+function today(off = 0) { const d = new Date(Date.now() + off); return new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); }
+function defVal(f) {
+  if (f.type === "date") return f.default === "today" ? today() : f.default === "month_start" ? today().slice(0, 8) + "01" : f.default || "";
+  if (f.type === "checkbox") return !!f.default;
+  return f.default ?? "";
+}
+
+function renderBots() {
+  $("bots").innerHTML = bots.map(b => `<button class="bot" data-id="${esc(b.id)}" aria-current="${bot && bot.id === b.id}">
+    <span class="ic">${esc(b.icon || "🤖")}</span><span><b>${esc(b.name)}</b><span>${esc((b.actions || []).filter(a => !a.hidden).map(a => a.label).join(" · "))}</span></span></button>`).join("");
+}
+function selectBot(id, actId) {
+  bot = bots.find(b => b.id === id) || bots[0];
+  if (!bot) return;
+  const vis = bot.actions.filter(a => !a.hidden);
+  action = vis.find(a => a.id === actId) || vis[0];
+  try { localStorage.setItem("hub.last", bot.id + "/" + action.id); } catch (e) {}
+  $("title").textContent = `${bot.icon || "🤖"} ${bot.name}`;
+  $("desc").textContent = bot.description || "";
+  $("tabs").innerHTML = vis.map(a => `<button class="tab" role="tab" data-a="${esc(a.id)}" aria-selected="${a.id === action.id}">${esc(a.label)}</button>`).join("");
+  renderBots(); renderForm();
+  $("resultcard").hidden = true;
+  if (action.auto) submit();
+}
+
+function draft() { const k = bot.id + "/" + action.id; return drafts[k] ||= Object.fromEntries((action.fields || []).map(f => [f.name, defVal(f)])); }
+function visible(f, v) { return !f.show_if || Object.entries(f.show_if).every(([k, x]) => v[k] === x); }
+function renderForm() {
+  const v = draft(), fs = action.fields || [];
+  const field = f => {
+    if (!visible(f, v)) return "";
+    const id = "f_" + f.name, req = f.required ? '<span class="req">*</span>' : "", ph = esc(f.placeholder || "");
+    if (f.type === "textarea") return `<div class="row"><label for="${id}">${esc(f.label)}${req}</label><textarea id="${id}" name="${f.name}" placeholder="${ph}">${esc(v[f.name])}</textarea></div>`;
+    if (f.type === "select") return `<div class="row"><label for="${id}">${esc(f.label)}${req}</label><select id="${id}" name="${f.name}">${f.options.map(o => `<option${o === v[f.name] ? " selected" : ""}>${esc(o)}</option>`).join("")}</select></div>`;
+    if (f.type === "radio") return `<div class="row"><span class="lb">${esc(f.label)}</span><div class="radios">${f.options.map(o => `<label class="check"><input type="radio" name="${f.name}" value="${esc(o.value)}"${o.value === v[f.name] ? " checked" : ""}>${esc(o.label)}</label>`).join("")}</div></div>`;
+    if (f.type === "checkbox") return `<label class="check"><input type="checkbox" name="${f.name}"${v[f.name] ? " checked" : ""}>${esc(f.label)}</label>`;
+    const help = f.help ? `<div class="help">${esc(f.help).replace(/\n/g, "<br>")}</div>` : "";
+    const dl = f.suggest_action ? ` list="dl_${f.name}"` : "";
+    return `<div class="row"><label for="${id}">${esc(f.label)}${req}</label><input id="${id}" type="${f.type === "date" ? "date" : "text"}" name="${f.name}" value="${esc(v[f.name])}" placeholder="${ph}" autocomplete="off"${dl}>${dl ? `<datalist id="dl_${f.name}"></datalist>` : ""}${help}</div>`;
+  };
+  // 제품명 같은 입력란 자동완성: 봇의 숨은 기능을 불러 목록을 채운다
+  setTimeout(() => fs.filter(f => f.suggest_action && visible(f, v)).forEach(async f => {
+    const r = await api("/api/run", { bot: bot.id, action: f.suggest_action, params: {} }).catch(() => null);
+    const el = document.getElementById("dl_" + f.name);
+    if (r && r.ok && el) el.innerHTML = (r.data || []).map(x => `<option value="${esc(x)}">`).join("");
+  }));
+  $("form").innerHTML = fs.map(field).join("") +
+    `<div class="actions"><button class="btn ${action.confirm ? "danger" : "primary"}" type="submit" id="go">${esc(action.button || "실행")}</button><span id="st"></span></div>`;
+  // 입력란 없이 바로 실행되는 기능(설정 등)은 양식 카드를 숨긴다
+  $("formcard").hidden = !fs.length && !!action.auto;
+}
+$("form").addEventListener("input", e => {
+  const el = e.target, v = draft();
+  if (!el.name) return;
+  v[el.name] = el.type === "checkbox" ? el.checked : el.value;
+  if (el.type === "radio") renderForm();
+});
+
+function setStatus(kind, msg) { const s = $("st"); if (s) { s.className = "status " + kind; s.textContent = msg; } }
+async function submit(e) {
+  if (e) e.preventDefault();
+  if (busy) return;
+  const v = draft();
+  const miss = (action.fields || []).filter(f => f.required && visible(f, v) && !String(v[f.name] ?? "").trim());
+  if (miss.length) { setStatus("bad", `입력 필요: ${miss.map(f => f.label).join(", ")}`); return; }
+  if (action.confirm && !confirm(action.confirm)) return;
+  await runAction(action.id, Object.fromEntries((action.fields || []).filter(f => visible(f, v)).map(f => [f.name, v[f.name]])));
+}
+$("form").addEventListener("submit", submit);
+
+async function runAction(actId, params) {
+  busy = true;
+  const go = $("go"); if (go) go.disabled = true;
+  const t0 = Date.now();
+  setStatus("run", "실행 중…");
+  const tick = setInterval(() => setStatus("run", `실행 중… ${Math.round((Date.now() - t0) / 1000)}초`), 1000);
+  let res;
+  try { res = await api("/api/run", { bot: bot.id, action: actId, params }); }
+  catch (err) { res = { ok: false, text: "봇 허브 서버에 연결할 수 없습니다. 터미널에서 hub.py 가 실행 중인지 확인하세요." }; }
+  clearInterval(tick); busy = false;
+  if (go) go.disabled = false;
+  setStatus(res.ok ? "ok" : "bad", res.ok ? `완료 (${((Date.now() - t0) / 1000).toFixed(1)}초)` : "오류");
+  showResult(res);
+  loadHistory();
+}
+
+function showResult(res) {
+  $("resultcard").hidden = false;
+  const raw = res.text ? `<pre class="out">${esc(res.text)}</pre>` : "";
+  if (res.view === "cards") $("result").innerHTML = renderCards(res.data);
+  else if (res.view === "jira_settings") { $("result").innerHTML = renderSettings(res.data, res.saved); }
+  else if (res.view === "jira_plan") $("result").innerHTML = renderPlan(res.data) + (raw ? `<details><summary>실행 로그</summary>${raw}</details>` : "");
+  else $("result").innerHTML = (res.ok ? "" : `<p class="status bad">실행하지 못했습니다</p>`) + (raw || '<p class="empty">출력 없음</p>');
+  $("resultcard").scrollIntoView({ block: "nearest", behavior: "smooth" });
+  // 명령으로 실행한 경우: 미리보기를 보여 준 뒤 바로 생성 확인
+  if (res.view === "jira_plan" && res.data && res.data.auto && !res.data.done) {
+    const n = res.data.plan.tasks.filter(x => !x.skip).length;
+    if (n) setTimeout(() => applyPlan(), 150);
+    else setStatus("ok", "만들 문서가 없습니다 — 모두 이미 있습니다");
+  }
+}
+
+// Jira 설정 편집: 기본 하위 문서 목록 · 별도 문서 머리말 · 제품 등록
+let cfg = null;
+function renderSettings(c, saved) {
+  cfg = JSON.parse(JSON.stringify(c));
+  const docRows = cfg.default_docs.map((d, i) => `<tr>
+      <td class="num">${i + 1}</td>
+      <td><input class="sm" data-k="default_docs.${i}.prefix" value="${esc(d.prefix)}" aria-label="머리말"></td>
+      <td><input data-k="default_docs.${i}.title" value="${esc(d.title)}" aria-label="문서 제목">
+        <details><summary>설명 양식${d.description ? " ✎" : ""}</summary><textarea data-k="default_docs.${i}.description" aria-label="설명">${esc(d.description)}</textarea></details></td>
+      <td class="nowrap"><button type="button" class="ibtn" data-mv="${i},-1" ${i ? "" : "disabled"} aria-label="위로">↑</button><button type="button" class="ibtn" data-mv="${i},1" ${i < cfg.default_docs.length - 1 ? "" : "disabled"} aria-label="아래로">↓</button><button type="button" class="ibtn del" data-del="default_docs,${i}" aria-label="삭제">✕</button></td></tr>`).join("");
+  const prodRows = (cfg.products || []).map((p, i) => `<tr>
+      <td><input data-k="products.${i}.name" value="${esc(p.name)}" placeholder="대만향 아이콘3" aria-label="제품명"></td>
+      <td><input data-k="products.${i}.epic" value="${esc(p.epic || "")}" placeholder="IOCARERENEW2023-0000" aria-label="에픽 키"></td>
+      <td><input data-k="products.${i}.assignee" value="${esc(p.assignee || "")}" placeholder="이메일" aria-label="담당자"></td>
+      <td><button type="button" class="ibtn del" data-del="products,${i}" aria-label="삭제">✕</button></td></tr>`).join("");
+  const ex = cfg.default_docs[0] ? `${cfg.default_docs[0].prefix} 대만향 아이콘3 ${cfg.default_docs[0].title}` : "";
+  return `${saved ? '<p class="status ok">저장했습니다. 다음 생성부터 적용됩니다.</p>' : ""}
+    <h3>기본 하위 문서 <small>${cfg.default_docs.length}개 · 제목 = 머리말 + 제품명 + 문서 제목${ex ? ` (예: ${esc(ex)})` : ""} · 설명의 {제품}은 제품명으로 바뀜</small></h3>
+    <div class="tbl"><table class="edit"><thead><tr><th>#</th><th>머리말</th><th>문서 제목</th><th></th></tr></thead><tbody>${docRows}</tbody></table></div>
+    <button type="button" class="btn" data-add="doc">+ 기본 문서 추가</button>
+    <h3>별도 하위 문서 머리말</h3>
+    <input class="sm" data-k="custom_prefix" value="${esc(cfg.custom_prefix || "")}" aria-label="별도 문서 머리말"> <small class="muted">별도 문서 제목 = 이 머리말 + 제품명 + 입력한 제목</small>
+    <h3>제품 등록 <small>제품명으로 프로젝트 문서(에픽)와 기본 담당자를 찾습니다. 하위 문서가 아직 없는 새 제품은 여기 등록하세요.</small></h3>
+    <div class="tbl"><table class="edit"><thead><tr><th>제품명</th><th>프로젝트 문서(에픽) 키</th><th>기본 담당자</th><th></th></tr></thead><tbody>${prodRows}</tbody></table></div>
+    <button type="button" class="btn" data-add="product">+ 제품 추가</button>
+    <div class="actions" style="margin-top:18px"><button type="button" class="btn primary" id="savecfg">설정 저장</button><span class="muted">저장 전에는 바뀌지 않습니다.</span></div>`;
+}
+function cfgSet(path, val) {
+  const ks = path.split("."); let o = cfg;
+  ks.slice(0, -1).forEach(k => o = o[k]);
+  o[ks[ks.length - 1]] = val;
+}
+$("result").addEventListener("input", e => { if (cfg && e.target.dataset.k) cfgSet(e.target.dataset.k, e.target.value); });
+$("result").addEventListener("click", async e => {
+  if (!cfg || !document.getElementById("savecfg")) return;
+  const t = e.target, rerender = () => { $("result").innerHTML = renderSettings(cfg); };
+  if (t.dataset.mv) { const [i, d] = t.dataset.mv.split(",").map(Number); const a = cfg.default_docs; [a[i], a[i + d]] = [a[i + d], a[i]]; rerender(); }
+  else if (t.dataset.del) { const [k, i] = t.dataset.del.split(","); cfg[k].splice(+i, 1); rerender(); }
+  else if (t.dataset.add === "doc") { cfg.default_docs.push({ prefix: cfg.custom_prefix || "[기획]", title: "", description: "" }); rerender(); $("result").querySelector(`[data-k="default_docs.${cfg.default_docs.length - 1}.title"]`).focus(); }
+  else if (t.dataset.add === "product") { (cfg.products ||= []).push({ name: "", epic: "", assignee: "" }); rerender(); }
+  else if (t.id === "savecfg") {
+    cfg.default_docs = cfg.default_docs.filter(d => d.title.trim() || d.description.trim());
+    cfg.products = (cfg.products || []).filter(p => p.name.trim() || p.epic.trim());
+    t.disabled = true;
+    const res = await api("/api/run", { bot: bot.id, action: "save_settings", params: { config: cfg } }).catch(() => ({ ok: false, text: "서버 연결 실패" }));
+    if (res.ok) showResult(res); else { t.disabled = false; alert(res.text); }
+    loadHistory();
+  }
+});
+
+function renderCards(d) {
+  return `<div class="cards">${d.cards.map(c => {
+    const n = parseFloat(c.value), g = c.gauge && !isNaN(n);
+    const cls = n >= 90 ? "crit" : n >= 70 ? "warn" : "";
+    return `<div class="kpi"><span>${esc(c.label)}</span><b>${esc(c.value ?? "-")}<small>${esc(c.unit || "")}</small></b>
+      ${g ? `<div class="gauge"><i class="${cls}" style="width:${Math.min(100, n)}%"></i></div>` : ""}${c.sub ? `<span>${esc(c.sub)}</span>` : ""}</div>`;
+  }).join("")}</div>${d.note ? `<p class="note">${esc(d.note)}</p>` : ""}`;
+}
+
+// Jira 미리보기: 체크 해제한 항목은 만들지 않음
+let plan = null;
+function renderPlan(d) {
+  plan = d;
+  const p = d.plan, ep = p.epic;
+  const link = k => `<a href="https://jira.coway.com/browse/${esc(k)}" target="_blank" rel="noopener">${esc(k)}</a>`;
+  const rows = p.tasks.map((x, i) => {
+    let st, on = !x.skip;
+    if (x.created) st = `<span class="pill made">생성됨</span> ${link(x.created)}`;
+    else if (x.skip === "제외") st = `<span class="pill have">제외</span>`;
+    else if (x.skip && x.skip.startsWith("~")) st = `<span class="pill sim">비슷한 작업 있음</span> ${link(x.skip.slice(1))}<br><small>${esc(x.skip_title)}</small>`;
+    else if (x.skip) st = `<span class="pill have">이미 있음</span> ${link(x.skip)}`;
+    else st = `<span class="pill new">새로 만듦</span>`;
+    const lock = d.done || (x.skip && x.skip !== "제외");
+    return `<tr class="${on || x.created ? "" : "off"}"><td><input type="checkbox" data-i="${i}" ${on ? "checked" : ""} ${lock ? "disabled" : ""} aria-label="${esc(x.summary)} 생성"></td>
+      <td>${esc(x.summary)}</td><td>${esc(x.assignee ? x.assignee.displayName : "(미지정)")}</td><td>${st}</td></tr>`;
+  }).join("");
+  const n = p.tasks.filter(x => !x.skip && !x.created).length;
+  return `<div class="planmeta"><span>제품 <b>${esc(p.product || "")}</b></span><span>프로젝트 문서 <b>${ep.key ? link(ep.key) : "새로 만듦"}</b> ${esc(ep.summary)}</span>
+      <span>구성요소 <b>${esc(p.components.join(", "))}</b></span><span>레이블 <b>${esc(p.labels.join(", "))}</b></span></div>
+    <div class="tbl"><table><thead><tr><th></th><th>하위 문서</th><th>담당자</th><th>상태</th></tr></thead><tbody id="planrows">${rows}</tbody></table></div>
+    <div class="actions" style="margin-top:14px">${d.done
+      ? `<span class="status ok">생성 완료 — ${ep.key ? link(ep.key) : ""}</span>`
+      : n ? `<button class="btn danger" id="apply">Jira에 ${n}개 생성</button><span class="note" style="margin:0">체크를 해제한 문서는 만들지 않습니다.</span>`
+          : `<span class="status ok">만들 문서가 없습니다 — 모두 이미 있습니다</span>`}</div>`;
+}
+$("result").addEventListener("change", e => {
+  const cb = e.target.closest("input[data-i]"); if (!cb || !plan) return;
+  const x = plan.plan.tasks[+cb.dataset.i];
+  if (cb.checked) delete x.skip; else x.skip = "제외";
+  const log = $("result").querySelector("details");
+  $("result").innerHTML = renderPlan(plan) + (log ? log.outerHTML : "");
+});
+$("result").addEventListener("click", e => { if (e.target.id === "apply") applyPlan(); });
+async function applyPlan() {
+  if (!plan || busy) return;
+  const todo = plan.plan.tasks.filter(x => !x.skip && !x.created);
+  const ep = plan.plan.epic;
+  const list = todo.slice(0, 12).map(x => " · " + x.summary).join("\n") + (todo.length > 12 ? `\n · 외 ${todo.length - 12}개` : "");
+  if (!confirm(`${ep.key} 에 하위 문서 ${todo.length}개를 만듭니다.\n\n${list}\n\n체크를 해제할 문서가 있으면 [취소]를 누르고 표에서 고른 뒤 생성 버튼을 누르세요.`)) return;
+  const b = $("apply"); if (b) { b.disabled = true; b.textContent = "생성 중…"; }
+  busy = true;
+  let res;
+  try { res = await api("/api/run", { bot: bot.id, action: "apply", params: { plan_file: plan.plan_file, plan: plan.plan } }); }
+  catch (err) { res = { ok: false, text: "서버 연결 실패" }; }
+  busy = false;
+  showResult(res);
+  loadHistory();
+}
+
+async function loadHistory() {
+  const h = await api("/api/history").catch(() => []);
+  $("hist").innerHTML = h.length ? h.map(r => `<div><time>${new Date(r.t * 1000).toLocaleString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })}</time>
+    <span>${r.ok ? "✅" : "⚠️"} ${esc(r.bot)} · ${esc(r.action)} <em>${esc(r.summary)}</em></span><em>${r.sec}초</em></div>`).join("")
+    : '<p class="empty">아직 실행 기록이 없습니다.</p>';
+}
+
+$("bots").addEventListener("click", e => { const b = e.target.closest(".bot"); if (b) selectBot(b.dataset.id); });
+$("tabs").addEventListener("click", e => { const t = e.target.closest(".tab"); if (t) selectBot(bot.id, t.dataset.a); });
+
+(async () => {
+  try { bots = await api("/api/bots"); }
+  catch (e) { $("title").textContent = "봇 허브 서버에 연결할 수 없습니다"; $("desc").textContent = "터미널에서 python3 hub.py 를 실행하세요."; return; }
+  if (!Array.isArray(bots)) { $("title").textContent = "페이지를 새로 고쳐 주세요"; return; }
+  let last = ""; try { last = localStorage.getItem("hub.last") || ""; } catch (e) {}
+  const [b, a] = last.split("/");
+  selectBot(b, a);
+  loadHistory();
+})();
+</script>
+</body>
+</html>

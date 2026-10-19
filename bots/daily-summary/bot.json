@@ -1,0 +1,27 @@
+{
+  "name": "토큰 사용량 리포트",
+  "icon": "📊",
+  "order": 20,
+  "description": "Claude 사용량을 봅니다. 계정 한도(5시간·주간)와 이 PC 토큰, 날짜별 상세, Mac+Windows 합산 기간 리포트 메일 발송.",
+  "actions": [
+    {"id": "now", "label": "지금 사용량", "button": "확인", "timeout": 30, "auto": true, "fields": []},
+    {
+      "id": "show",
+      "label": "날짜별 상세 (이 PC)",
+      "button": "보기",
+      "timeout": 60,
+      "fields": [{"name": "date", "label": "날짜", "type": "date", "default": "today"}]
+    },
+    {
+      "id": "send",
+      "label": "기간 리포트 메일",
+      "button": "메일 발송",
+      "timeout": 180,
+      "confirm": "Mac+Windows 합산 리포트를 이 PC의 메일 설정(gmail.json) 받는 주소로 발송합니다. 계속할까요?",
+      "fields": [
+        {"name": "start", "label": "시작일", "type": "date", "default": "month_start", "required": true},
+        {"name": "end", "label": "종료일", "type": "date", "default": "today", "required": true}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "name": "봇 허브 동기화",
+  "icon": "🔄",
+  "order": 90,
+  "description": "Mac·Windows가 같은 봇 허브를 쓰도록 회사 Git 저장소와 맞춥니다. 다른 PC에서 고친 봇·설정을 받거나, 이 PC에서 고친 것을 올립니다.",
+  "actions": [
+    {"id": "status", "label": "상태", "auto": true, "timeout": 60, "fields": []},
+    {"id": "pull", "label": "업데이트 받기", "button": "받기", "timeout": 120, "fields": []},
+    {
+      "id": "push",
+      "label": "변경 올리기",
+      "button": "올리기",
+      "timeout": 180,
+      "confirm": "이 PC에서 바뀐 봇 허브 파일을 회사 Git 저장소에 올립니다. 계속할까요?",
+      "fields": [{"name": "message", "label": "무엇을 바꿨나요 (기록용 한 줄)", "type": "text", "required": true,
+                  "placeholder": "Jira 기본 하위 문서에 'DR3 체크리스트' 추가"}]
+    }
+  ]
+}
