@@ -31,6 +31,14 @@ def _playwright():
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
+        # 업무 봇은 하위 봇을 -I 로 실행해 사용자 폴더 설치(pip --user, Mac 기본)를 못 보므로 한 번 더 찾는다
+        import site, sys
+        sys.path.append(site.getusersitepackages())
+        try:
+            from playwright.sync_api import sync_playwright
+            return sync_playwright
+        except ImportError:
+            pass
         raise BotError("Playwright 가 설치돼 있지 않습니다. 명령 창에서 아래를 실행하세요.\n"
                        "  py -3 -m pip install playwright  (Mac: python3 -m pip install playwright)")
     return sync_playwright
