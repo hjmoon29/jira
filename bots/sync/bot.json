@@ -2,6 +2,8 @@
   "name": "업무 봇 동기화",
   "icon": "🔄",
   "order": 90,
+  "group": "system",
+  "tagline": "Mac·Windows 봇 코드 맞추기",
   "description": "Mac·Windows가 같은 업무 봇를 쓰도록 회사 Git 저장소와 맞춥니다. 다른 PC에서 고친 봇·설정을 받거나, 이 PC에서 고친 것을 올립니다.",
   "actions": [
     {"id": "status", "label": "상태", "auto": true, "timeout": 60, "fields": []},

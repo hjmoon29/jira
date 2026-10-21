@@ -39,6 +39,7 @@
 | bots/spec-doc | 기획 사양 정리 (wiki) | 초안 만들기(위키·Drive·Figma → Claude가 [기획 사양 정리] 형식으로 작성) / 초안 목록·미리보기·위키 게시 |
 | bots/qa | QA 대응 | Jira 이슈 답변 / 문의사항 답변 (답변 초안 → 엑셀 → 메일, Jira·문서에는 안 씀) / 예약 발송 |
 | bots/meeting-room | 회의실 예약 | 회의실 잡기(일자·시간대·인원 → gapps 빈 회의실을 Google 캘린더 일정으로 예약) / 빈 회의실 보기 / 로그인. Playwright 필요(`pip install playwright`), 브라우저 로그인 상태는 `~/.playwright-edge-profile` |
+| bots/healthcare | 헬스케어 예약 | 가장 빠른 시간 찾기 / 예약하기(키퍼·시간대·희망 일자·시간) / 로그인. 포털 로그인에 NETSPASS 추가 인증이 있어 '로그인' 탭에서 직접 로그인하면 세션 쿠키를 `~/.config/work-bot/healthcare_cookies.json` 에 저장해 씀(만료 시 재로그인) |
 | bots/daily-summary | 토큰 사용량 리포트 | 지금 사용량 / 날짜별 상세 / Mac+Windows 합산 기간 리포트 메일 |
 | bots/sync | 업무 봇 동기화 | 상태 / 업데이트 받기 / 변경 올리기 |
 
@@ -66,6 +67,7 @@ Mac·Windows 둘 다에서 돌도록: 경로는 `os.path.expanduser("~")`·`os.p
   ]
 }
 ```
+`"group": "묶음 이름"` 을 주면 왼쪽 목록에서 같은 묶음끼리 모인다(지금: 기획 업무 / 사내 예약 / 리포트). `"system"` 은 맨 아래 따로(동기화). `"tagline"` 은 왼쪽 목록에 이름 아래 한 줄로 보이는 짧은 설명.
 date 기본값: `today`, `month_start`. `"hidden": true` 인 기능은 탭에 안 보이고 화면 내부에서만 호출.
 
 **adapter.py** — 실행. `argv[1]` = 기능 id, 표준입력 = 입력값 JSON, 표준출력 = 결과 JSON:

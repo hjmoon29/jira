@@ -1,7 +1,9 @@
 {
   "name": "토큰 사용량 리포트",
   "icon": "📊",
-  "order": 20,
+  "order": 40,
+  "group": "리포트",
+  "tagline": "Claude 토큰 사용량 조회·리포트",
   "description": "Claude 사용량을 봅니다. 계정 한도(5시간·주간)와 이 PC 토큰, 날짜별 상세, Mac+Windows 합산 기간 리포트 메일 발송.",
   "actions": [
     {"id": "now", "label": "지금 사용량", "button": "확인", "timeout": 30, "auto": true, "fields": []},
