@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""봇 허브 처음 설정 (Mac·Windows 공용). 저장소를 받은 뒤 한 번 실행:  python3 setup.py  (Windows: py -3 setup.py)
+"""업무 봇 처음 설정 (Mac·Windows 공용). 저장소를 받은 뒤 한 번 실행:  python3 setup.py  (Windows: py -3 setup.py)
 
 1. Python 버전 확인 (3.8 이상)
 2. Jira 개인 액세스 토큰 저장 (~/.config/jira-bot/token — 저장소 밖, 이 PC 전용)
@@ -88,4 +88,4 @@ if __name__ == "__main__":
     check_python()
     token()
     link_skills()
-    print("\n완료. 실행: " + ("'봇허브 실행.bat' 더블클릭" if WIN else "'봇허브 실행.command' 더블클릭") + " 또는 python3 hub.py")
+    print("\n완료. 실행: " + ("'업무봇 실행.bat' 더블클릭" if WIN else "'업무봇 실행.command' 더블클릭") + " 또는 python3 hub.py")

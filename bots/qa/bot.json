@@ -1,0 +1,58 @@
+{
+  "name": "QA 대응",
+  "icon": "🧪",
+  "order": 14,
+  "description": "Jira QA 이슈와 문의사항 시트에 대한 답변 초안을 Claude가 만들어 엑셀로 정리하고 메일로 보냅니다. Jira·구글 문서에는 아무것도 쓰지 않습니다. 정해 둔 시각에 자동으로 보내도록 예약할 수 있습니다.",
+  "actions": [
+    {
+      "id": "jira_find",
+      "label": "Jira 이슈 답변",
+      "button": "이슈 찾기",
+      "timeout": 120,
+      "init_action": "defaults",
+      "options_action": "jira_options",
+      "options_on": ["project"],
+      "fields": [
+        {"name": "project", "label": "Jira 프로젝트 키", "type": "text", "required": true, "default": "CWCQIOTN", "placeholder": "CWCQIOTN",
+         "help": "바꾸면 아래 선택지(상태·버전·담당자·레이블)를 그 프로젝트 기준으로 다시 불러옵니다."},
+        {"name": "statuses", "label": "상태", "type": "multi"},
+        {"name": "versions", "label": "영향받는 버전 (최신순)", "type": "multi"},
+        {"name": "assignees", "label": "담당자", "type": "multi"},
+        {"name": "labels", "label": "레이블 (최근 이슈에서 많이 쓴 순)", "type": "multi"},
+        {"name": "jql", "label": "추가 JQL (선택)", "type": "text", "placeholder": "updated >= -7d AND text ~ \"리포트\""},
+        {"name": "limit", "label": "최대 건수", "type": "text", "default": "50"},
+        {"name": "refs", "label": "참고 자료 — 위키·Figma·Drive 주소 (한 줄에 하나)", "type": "textarea",
+         "placeholder": "https://wiki.coway.com/pages/viewpage.action?pageId=406323539\nhttps://www.figma.com/design/…?node-id=…",
+         "help": "답변 근거로 읽을 기획 문서입니다. [기획 사양 정리] 위키 페이지나 관련 화면설계서(node-id로 범위 지정)를 넣으면 답변이 정확해집니다."},
+        {"name": "to", "label": "결과 메일 받는 사람", "type": "text", "placeholder": "이메일"},
+        {"name": "only_new", "label": "예약 실행 시 이전에 보낸 이슈는 바뀐 경우에만 다시 포함", "type": "checkbox", "default": true}
+      ]
+    },
+    {
+      "id": "inquiry_find",
+      "label": "문의사항 답변",
+      "button": "문의 찾기",
+      "timeout": 120,
+      "init_action": "defaults",
+      "fields": [
+        {"name": "doc", "label": "문의사항 문서 주소 (구글 시트 또는 Drive의 xlsx)", "type": "text", "required": true, "placeholder": "https://docs.google.com/spreadsheets/d/…/edit"},
+        {"name": "sheet", "label": "시트(탭) 이름 — 비우면 '담당자'·'문의' 열이 있는 첫 탭", "type": "text", "placeholder": "문의사항"},
+        {"name": "owner", "label": "담당자 이름 — 이 이름이 담당자 칸에 있는 문의만", "type": "text", "required": true, "placeholder": "문효준"},
+        {"name": "columns", "label": "열 지정 (선택) — 열 이름으로 못 찾을 때만", "type": "text", "placeholder": "담당자=G, 문의=I, 답변=N",
+         "help": "보통은 머리글의 '담당자'·'문의내역'·'답변내역' 같은 이름으로 자동으로 찾습니다. 쓸 수 있는 이름: 순번·담당자·문의·답변·일자·작성자·산출물·참고"},
+        {"name": "unanswered", "label": "답변이 비어 있는 문의만", "type": "checkbox", "default": true},
+        {"name": "refs", "label": "참고 자료 — 위키·Figma·Drive 주소 (한 줄에 하나)", "type": "textarea",
+         "placeholder": "https://wiki.coway.com/pages/viewpage.action?pageId=406323539\nhttps://www.figma.com/design/…",
+         "help": "답변 예시의 근거로 읽을 기획 문서(기획 사양 정리, 화면설계서, 정책 시트 등)입니다."},
+        {"name": "to", "label": "결과 메일 받는 사람", "type": "text", "placeholder": "이메일"}
+      ]
+    },
+    {"id": "schedules", "label": "예약 목록", "auto": true, "timeout": 30, "fields": []},
+    {"id": "jira_options", "label": "Jira 선택지", "hidden": true, "timeout": 60},
+    {"id": "defaults", "label": "기본값", "hidden": true, "timeout": 30},
+    {"id": "answer", "label": "답변 만들기", "hidden": true, "timeout": 3600},
+    {"id": "schedule", "label": "예약 저장", "hidden": true, "timeout": 60},
+    {"id": "unschedule", "label": "예약 삭제", "hidden": true, "timeout": 30},
+    {"id": "run_now", "label": "예약 지금 실행", "hidden": true, "timeout": 3600}
+  ]
+}

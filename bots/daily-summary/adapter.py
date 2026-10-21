@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# 봇 허브 ↔ 클로드 데일리 써머리 연결 (Mac·Windows 공용). 입력: argv[1]=기능, stdin=JSON / 출력: JSON
+# 업무 봇 ↔ 클로드 데일리 써머리 연결 (Mac·Windows 공용). 입력: argv[1]=기능, stdin=JSON / 출력: JSON
 #   Mac     : ~/claude-daily-summary,           PC 이름 mac,     상태 표시줄 기록 있음
 #   Windows : %USERPROFILE%\Downloads\claude-daily-summary, PC 이름 windows, 상태 표시줄 기록 ~/.claude/rate-limits-cache.json
 import json, os, platform, re, shutil, subprocess, sys, time, urllib.request

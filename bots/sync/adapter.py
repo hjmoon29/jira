@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# 봇 허브 저장소를 Git으로 동기화. 입력: argv[1]=기능, stdin=JSON / 출력: JSON
+# 업무 봇 저장소를 Git으로 동기화. 입력: argv[1]=기능, stdin=JSON / 출력: JSON
 import json, os, platform, shutil, subprocess, sys
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
@@ -62,8 +62,8 @@ def pull(q):
     ok, t = git("pull", "--rebase", "--autostash", "origin", "HEAD")
     if not ok:
         out(ok=False, text="업데이트를 받지 못했습니다. 같은 파일을 두 PC에서 동시에 고쳤을 수 있습니다.\n"
-                           "Claude Code에 '봇 허브 git 충돌 해결해줘' 라고 요청하세요.\n\n" + t)
-    out(ok=True, text=t + "\n\n화면을 새로 고치면 새 봇·설정이 반영됩니다. (hub.py 자체가 바뀐 경우 봇 허브를 껐다 켜세요)",
+                           "Claude Code에 '업무 봇 git 충돌 해결해줘' 라고 요청하세요.\n\n" + t)
+    out(ok=True, text=t + "\n\n화면을 새로 고치면 새 봇·설정이 반영됩니다. (hub.py 자체가 바뀐 경우 업무 봇를 껐다 켜세요)",
         summary="업데이트 받음")
 
 
@@ -83,7 +83,7 @@ def push(q):
     ok, t = git("pull", "--rebase", "--autostash", "origin", "HEAD")
     log.append(t)
     if not ok:
-        out(ok=False, text="올리기 전에 다른 PC 변경을 합치지 못했습니다(충돌). Claude Code에 '봇 허브 git 충돌 해결해줘' 라고 요청하세요.\n\n" + "\n".join(log))
+        out(ok=False, text="올리기 전에 다른 PC 변경을 합치지 못했습니다(충돌). Claude Code에 '업무 봇 git 충돌 해결해줘' 라고 요청하세요.\n\n" + "\n".join(log))
     ok, t = git("push", "origin", "HEAD")
     log.append(t)
     out(ok=ok, text="\n\n".join(x for x in log if x), summary=f"올림: {msg}" if ok else "올리기 실패")

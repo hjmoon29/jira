@@ -6,12 +6,12 @@ description: 사내 Jira(jira.coway.com) 제품 프로젝트 문서(에픽)에 �
 # Jira 하위 문서 생성 봇
 
 - 하위 문서 제목 = `<머리말> <제품명> <문서 제목>` (예: `[기획] 대만향 아이콘3 알림 정의`), 에픽에 Epic Link로 연결.
-- 코드·설정은 봇 허브 저장소 `~/Downloads/bot-hub/bots/jira-tasks/` (Windows: `%USERPROFILE%\Downloads\bot-hub\bots\jira-tasks\`). Mac·Windows가 Git으로 같이 씀.
+- 코드·설정은 업무 봇 저장소 `~/Downloads/bot-hub/bots/jira-tasks/` (Windows: `%USERPROFILE%\Downloads\bot-hub\bots\jira-tasks\`). Mac·Windows가 Git으로 같이 씀.
 - 설정 `config.json`: `default_docs`(기본 하위 문서 목록·설명 양식, `{제품}` 치환), `custom_prefix`(별도 문서 머리말),
-  `products`(제품명 → 에픽 키·기본 담당자). 화면에서는 봇 허브 > Jira 하위 문서 생성 > 설정.
+  `products`(제품명 → 에픽 키·기본 담당자). 화면에서는 업무 봇 > Jira 하위 문서 생성 > 설정.
 - 스크립트: `python3 -I ~/Downloads/bot-hub/bots/jira-tasks/jira_tasks.py` (Windows는 `py -3 -I %USERPROFILE%\Downloads\bot-hub\bots\jira-tasks\jira_tasks.py`)
 - 토큰: PC마다 `~/.config/jira-bot/token` (저장소에 넣지 않음)
-- 설정을 바꿨으면 봇 허브의 '동기화' 봇이나 git으로 커밋·푸시해서 다른 PC와 공유한다.
+- 설정을 바꿨으면 업무 봇의 '동기화' 봇이나 git으로 커밋·푸시해서 다른 PC와 공유한다.
 
 ## 절차
 1. 요청을 그대로 명령으로 넘긴다: `jira_tasks.py command "<사용자 문장>" --out <스크래치패드>/jira-plan.json`

@@ -5,6 +5,28 @@
   "description": "제품 프로젝트 문서(에픽)에 하위 문서를 만듭니다. 제목은 '[머리말] 제품명 문서 제목' 형식이고, 에픽에 이미 있는 문서는 건너뜁니다.",
   "actions": [
     {
+      "id": "create",
+      "label": "직접 입력",
+      "button": "하위 문서 생성",
+      "timeout": 120,
+      "fields": [
+        {"name": "product", "label": "제품명 — 제목에 들어감, 등록된 제품이면 아래 값이 자동으로 채워짐", "type": "text", "placeholder": "대만향 아이콘3", "suggest_action": "products", "fill_action": "epic_info"},
+        {"name": "epic", "label": "프로젝트 문서(에픽) 키", "type": "text", "required": true, "placeholder": "IOCARERENEW2023-2597", "fill_action": "epic_info",
+         "help": "입력하면 이 에픽의 기존 하위 문서와 같은 값(이슈 유형·우선순위·구성 요소·레이블·담당자)으로 아래 칸을 채웁니다. 채운 뒤 고쳐도 됩니다."},
+        {"name": "prefix", "label": "머리말", "type": "select", "options": ["[기획]", "[제품]", "(없음)"]},
+        {"name": "titles", "label": "요약(문서 제목) — 한 줄에 하나, 여러 줄이면 같은 값으로 여러 개 생성", "type": "textarea", "required": true,
+         "placeholder": "현지 인증 일정 정리\nDR3 체크리스트", "help": "실제 요약 = 머리말 + 제품명 + 문서 제목  예) [기획] 대만향 아이콘3 현지 인증 일정 정리"},
+        {"name": "issuetype", "label": "이슈 유형", "type": "select", "options": ["작업", "이야기", "버그", "새 기능", "개선"]},
+        {"name": "reporter", "label": "보고자 — 비우면 나", "type": "text", "placeholder": "이름 또는 이메일"},
+        {"name": "assignee", "label": "담당자", "type": "text", "placeholder": "이름 또는 이메일"},
+        {"name": "priority", "label": "우선순위", "type": "select", "options": ["블로커", "Highest", "High", "Medium", "Low", "Lowest", "사소함", "Urgent(P1)", "High(P2)", "Normal(P3)", "Low(P4)"]},
+        {"name": "components", "label": "구성 요소 — 쉼표로 구분", "type": "text", "placeholder": "기획"},
+        {"name": "labels", "label": "레이블 — 쉼표로 구분", "type": "text", "placeholder": "IoCare+, 정수기"},
+        {"name": "duedate", "label": "기한", "type": "date"},
+        {"name": "description", "label": "설명 (Jira 위키 문법)", "type": "textarea", "placeholder": "h3. 개요\n...\n\nh3. TODO\n * ..."}
+      ]
+    },
+    {
       "id": "command",
       "label": "명령으로 생성",
       "button": "실행",
@@ -42,6 +64,7 @@
     {"id": "settings", "label": "설정", "auto": true, "timeout": 30, "fields": []},
     {"id": "save_settings", "label": "설정 저장", "hidden": true, "timeout": 30},
     {"id": "products", "label": "제품 목록", "hidden": true, "timeout": 30},
+    {"id": "epic_info", "label": "에픽 기준값", "hidden": true, "timeout": 60},
     {"id": "apply", "label": "생성", "hidden": true, "timeout": 600},
     {
       "id": "user",

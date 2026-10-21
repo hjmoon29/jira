@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# 봇 허브 ↔ jira_tasks.py 연결 (/jira-tasks 스킬도 같은 스크립트 사용). 입력: argv[1]=기능, stdin=화면 입력(JSON) / 출력: JSON
+# 업무 봇 ↔ jira_tasks.py 연결 (/jira-tasks 스킬도 같은 스크립트 사용). 입력: argv[1]=기능, stdin=화면 입력(JSON) / 출력: JSON
 import json, os, subprocess, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -33,7 +33,7 @@ def show_plan(r, auto=False):
     p = r["plan"]
     n = sum(1 for x in p["tasks"] if not x.get("skip"))
     out(ok=True, view="jira_plan", data={"plan": p, "plan_file": os.path.basename(r["plan_file"]), "auto": auto},
-        summary=f"{p['product']}: 새 문서 {n}개 / 전체 {len(p['tasks'])}개")
+        summary=f"{p['product'] or p['epic']['key']}: 새 문서 {n}개 / 전체 {len(p['tasks'])}개")
 
 
 def opt(q, k):
@@ -67,6 +67,36 @@ def custom(q):
     show_plan(call(*a))
 
 
+def create(q):
+    # 직접 입력: 화면에서 넣은 값 그대로 (빈 칸은 에픽의 기존 하위 문서 기준)
+    titles = [t.strip() for t in (q.get("titles") or "").splitlines() if t.strip()]
+    if not titles:
+        out(ok=False, text="문서 제목을 한 줄에 하나씩 입력하세요")
+    a = plan_args(q)
+    for t in titles:
+        a += ["--doc", t]
+    prefix = (q.get("prefix") or "").strip()
+    a.append("--prefix=" + ("" if prefix == "(없음)" else prefix))
+    for k, flag in (("issuetype", "--issuetype"), ("reporter", "--reporter"), ("priority", "--priority"), ("components", "--components"),
+                    ("labels", "--labels"), ("duedate", "--due"), ("description", "--description")):
+        if opt(q, k):
+            a.append(f"{flag}={q[k].strip()}")  # '=' 형식: 값이 '-'로 시작해도 옵션으로 오인하지 않게
+    show_plan(call(*a), auto=True)
+
+
+def epic_info(q):
+    a = ["epic-info"]
+    for k in ("product", "epic"):
+        if opt(q, k):
+            a += ["--" + k, opt(q, k)]
+    if len(a) == 1:
+        out(ok=False, text="", quiet=True)
+    r = call(*a)
+    if "error" in r:
+        out(ok=False, text=r["error"], quiet=True)
+    out(ok=True, data=r, quiet=True)
+
+
 def apply(q):
     name = os.path.basename(q.get("plan_file") or "")
     path = os.path.join(RUNS, name)
@@ -80,7 +110,7 @@ def apply(q):
     p = r["plan"]
     made = [x for x in p["tasks"] if x.get("created")]
     out(ok=True, text=r["text"], view="jira_plan", data={"plan": p, "plan_file": name, "done": True},
-        summary=f"{p['product']} → {p['epic']['key']} 에 {len(made)}개 생성")
+        summary=f"{p['product'] or '하위 문서'} → {p['epic']['key']} 에 {len(made)}개 생성")
 
 
 def settings(q):
@@ -113,6 +143,6 @@ def user(q):
 if __name__ == "__main__":
     action = sys.argv[1] if len(sys.argv) > 1 else ""
     q = json.loads(sys.stdin.read() or "{}")
-    fn = {"command": command, "defaults": defaults, "custom": custom, "apply": apply, "settings": settings,
+    fn = {"command": command, "defaults": defaults, "custom": custom, "create": create, "epic_info": epic_info, "apply": apply, "settings": settings,
           "save_settings": save_settings, "products": products, "user": user}.get(action)
     fn(q) if fn else out(ok=False, text="알 수 없는 기능")

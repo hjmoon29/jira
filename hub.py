@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""봇 허브: 여러 업무 봇을 한 화면에서 실행하는 로컬 웹 프로그램.
+"""업무 봇: 여러 업무 봇을 한 화면에서 실행하는 로컬 웹 프로그램.
 
-실행: python3 hub.py (Windows: py -3 hub.py, 또는 봇허브 실행.bat) → 브라우저에서 http://127.0.0.1:8765 이 열린다.
+실행: python3 hub.py (Windows: py -3 hub.py, 또는 업무봇 실행.bat) → 브라우저에서 http://127.0.0.1:8765 이 열린다.
 봇 추가: bots/<봇id>/bot.json (화면 정의) + adapter.py (실행) — README.md 참고.
 이 Mac 안에서만 열리며(127.0.0.1), 화면마다 발급한 키가 있어야 실행 요청을 받는다.
 """
@@ -141,7 +141,7 @@ def main():
         webbrowser.open(f"http://127.0.0.1:{PORT}")
         return
     url = f"http://127.0.0.1:{PORT}"
-    print(f"봇 허브 실행 중 → {url}  (끝내려면 이 창에서 Ctrl+C)")
+    print(f"업무 봇 실행 중 → {url}  (끝내려면 이 창에서 Ctrl+C)")
     if "--no-browser" not in sys.argv:
         threading.Timer(0.6, lambda: webbrowser.open(url)).start()
     try:

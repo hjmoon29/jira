@@ -1,0 +1,34 @@
+{
+  "name": "기획 사양 정리 (wiki)",
+  "icon": "📝",
+  "order": 12,
+  "description": "위키·Google Drive·Figma 화면설계서를 모아 '[기획 사양 정리]' 위키 문서 초안을 만듭니다. 초안을 확인한 뒤 [위키에 게시]를 누르면 상위 페이지의 하위 문서로 올라갑니다(같은 제목이 있으면 새 버전으로 갱신).",
+  "actions": [
+    {
+      "id": "draft",
+      "label": "초안 만들기",
+      "button": "초안 만들기",
+      "timeout": 3600,
+      "fields": [
+        {"name": "name", "label": "제품/프로젝트명 — 문서 제목은 '[기획 사양 정리] 제품명'", "type": "text", "required": true, "placeholder": "중국 ODM 매트리스"},
+        {"name": "parent", "label": "상위 위키 페이지 (프로젝트 페이지 주소)", "type": "text", "required": true,
+         "placeholder": "https://wiki.coway.com/pages/viewpage.action?pageId=248562165",
+         "help": "이 페이지와 하위 페이지를 자료로 읽고, 초안은 이 페이지의 하위 문서로 게시합니다. 이미 [기획 사양 정리] 하위 문서가 있으면 이전 버전으로 보고 번호·결정 사항을 이어 갑니다."},
+        {"name": "figma", "label": "Figma 화면설계서 주소 (한 줄에 하나)", "type": "textarea",
+         "placeholder": "https://www.figma.com/design/VHkYnnjKj7LajKHNtYSd2v/",
+         "help": "파일 주소면 'SPEC 제외'·표지·작업안 페이지를 뺀 전체를, node-id가 붙은 주소면 그 페이지·섹션만 읽습니다. 취소선 글자는 삭제된 내용으로 보고 뺍니다."},
+        {"name": "drive", "label": "Google Drive 문서 주소 (한 줄에 하나)", "type": "textarea",
+         "placeholder": "https://docs.google.com/spreadsheets/d/…/edit", "help": "구글 시트·문서·슬라이드, xlsx·docx·pptx (시트는 숨긴 탭을 뺀 모든 탭)"},
+        {"name": "wiki_extra", "label": "추가 참고 위키 페이지 (한 줄에 하나)", "type": "textarea", "placeholder": "https://wiki.coway.com/pages/viewpage.action?pageId=…"},
+        {"name": "children", "label": "상위 페이지의 하위 페이지도 자료로 읽기", "type": "checkbox", "default": true},
+        {"name": "format_ref", "label": "형식 예시 (이 페이지와 같은 구조로 작성)", "type": "select",
+         "options": ["중국 ODM 매트리스", "스마트/시그니처 슬립싱크", "모션베드", "개인형 비데 후속 모델"]},
+        {"name": "notes", "label": "추가 요청 (선택)", "type": "textarea", "placeholder": "예) 리포트 장은 매트리스 리포트만, 일정은 최신 회의록 기준으로",
+         "help": "자료를 모으는 데 1분 안팎, Claude가 쓰는 데 10~20분쯤 걸립니다. 위키에는 [위키에 게시]를 누르기 전까지 아무것도 올리지 않습니다."}
+      ]
+    },
+    {"id": "drafts", "label": "초안 목록", "auto": true, "timeout": 30, "fields": []},
+    {"id": "open", "label": "초안 열기", "hidden": true, "timeout": 30},
+    {"id": "publish", "label": "위키 게시", "hidden": true, "timeout": 120}
+  ]
+}

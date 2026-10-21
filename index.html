@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>봇 허브</title>
+<title>업무 봇</title>
 <style>
 :root {
   --bg: #F4F5F7; --panel: #FFFFFF; --fg: #1B1F24; --muted: #616A75; --line: #DDE1E6; --chip: #ECEFF3;
@@ -116,12 +116,20 @@ table.edit details summary { margin-top: 4px; font-size: 12px; }
 .ibtn:disabled { opacity: .3; cursor: default; }
 .ibtn.del:hover { border-color: var(--bad); color: var(--bad); }
 #result > .btn { margin-top: 8px; }
+.multi { display: flex; flex-wrap: wrap; gap: 4px 14px; max-height: 150px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: var(--bg); }
+.multi .check { font-size: 13px; }
+.multiq { width: 200px; margin-bottom: 6px; }
+.qabox { border-top: 1px solid var(--line); margin-top: 16px; padding-top: 14px; display: grid; gap: 10px; }
+.qin { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 6px 8px; font-size: 13px; min-width: 240px; }
+.sched { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.sched select, .sched input[type=date], .sched input[type=time] { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 5px 8px; font-size: 13px; }
+.specview { width: 100%; height: 75vh; border: 1px solid var(--line); border-radius: 8px; background: #fff; margin-top: 10px; }
 </style>
 </head>
 <body>
 <div class="app">
   <aside>
-    <div class="brand">봇 허브<small>업무 봇을 한 곳에서 실행</small></div>
+    <div class="brand">업무 봇<small>반복 업무를 한 곳에서 실행</small></div>
     <nav id="bots" aria-label="봇 목록"></nav>
     <div class="addbot">봇 추가: <code>bots/&lt;이름&gt;/</code> 폴더에 <code>bot.json</code> + <code>adapter.py</code> 를 넣고 새로 고침</div>
   </aside>
@@ -138,6 +146,8 @@ const KEY = "__HUB_KEY__";
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 let bots = [], bot = null, action = null, busy = false;
+const runs = {};  // 봇·기능별 실행 상태·마지막 결과 — 다른 탭에 갔다 와도 그대로 다시 보여 준다
+const curKey = () => bot && action ? bot.id + "/" + action.id : "";
 const drafts = {};  // 봇·기능별 입력값 유지
 
 async function api(path, body) {
@@ -148,6 +158,8 @@ function today(off = 0) { const d = new Date(Date.now() + off); return new Date(
 function defVal(f) {
   if (f.type === "date") return f.default === "today" ? today() : f.default === "month_start" ? today().slice(0, 8) + "01" : f.default || "";
   if (f.type === "checkbox") return !!f.default;
+  if (f.type === "select") return f.default ?? f.options[0];
+  if (f.type === "multi") return f.default || [];
   return f.default ?? "";
 }
 
@@ -163,10 +175,37 @@ function selectBot(id, actId) {
   try { localStorage.setItem("hub.last", bot.id + "/" + action.id); } catch (e) {}
   $("title").textContent = `${bot.icon || "🤖"} ${bot.name}`;
   $("desc").textContent = bot.description || "";
-  $("tabs").innerHTML = vis.map(a => `<button class="tab" role="tab" data-a="${esc(a.id)}" aria-selected="${a.id === action.id}">${esc(a.label)}</button>`).join("");
-  renderBots(); renderForm();
-  $("resultcard").hidden = true;
+  renderTabs(); renderBots(); renderForm();
+  const s = runs[curKey()];
+  if (s && s.res && !action.auto) showResult(s.res, true); else $("resultcard").hidden = true;
+  if (s && s.status) setStatus(...s.status);
+  if (s && s.running && $("go")) $("go").disabled = true;
   if (action.auto) submit();
+  prepare();
+}
+function renderTabs() {  // 실행 중인 기능은 탭에 ⏳ 표시
+  $("tabs").innerHTML = bot.actions.filter(a => !a.hidden).map(a => `<button class="tab" role="tab" data-a="${esc(a.id)}" aria-selected="${a.id === action.id}">${esc(a.label)}${(runs[bot.id + "/" + a.id] || {}).running ? " ⏳" : ""}</button>`).join("");
+}
+const opts = {}, inited = {};  // 봇·기능별 불러온 선택지 / 기본값 채움 여부
+async function prepare() {
+  const k = bot.id + "/" + action.id, act = action;
+  if (action.init_action && !inited[k]) {
+    inited[k] = true;
+    const r = await api("/api/run", { bot: bot.id, action: action.init_action, params: draft() }).catch(() => null);
+    if (action === act && r && r.ok) {
+      const v = draft(), t = touched[k] ||= {};
+      Object.entries((r.data || {}).values || {}).forEach(([n, x]) => { if (!t[n] && !String(v[n] ?? "").trim() && (act.fields || []).some(f => f.name === n)) v[n] = x; });
+      renderForm();
+    }
+  }
+  if (action.options_action) loadOptions();
+}
+async function loadOptions() {
+  const k = bot.id + "/" + action.id, act = action;
+  const r = await api("/api/run", { bot: bot.id, action: action.options_action, params: draft() }).catch(() => null);
+  if (action !== act) return;
+  if (r && r.ok) { opts[k] = r.data || {}; renderForm(); }
+  else setStatus("bad", (r && r.text) || "선택지를 불러오지 못했습니다");
 }
 
 function draft() { const k = bot.id + "/" + action.id; return drafts[k] ||= Object.fromEntries((action.fields || []).map(f => [f.name, defVal(f)])); }
@@ -176,11 +215,19 @@ function renderForm() {
   const field = f => {
     if (!visible(f, v)) return "";
     const id = "f_" + f.name, req = f.required ? '<span class="req">*</span>' : "", ph = esc(f.placeholder || "");
-    if (f.type === "textarea") return `<div class="row"><label for="${id}">${esc(f.label)}${req}</label><textarea id="${id}" name="${f.name}" placeholder="${ph}">${esc(v[f.name])}</textarea></div>`;
-    if (f.type === "select") return `<div class="row"><label for="${id}">${esc(f.label)}${req}</label><select id="${id}" name="${f.name}">${f.options.map(o => `<option${o === v[f.name] ? " selected" : ""}>${esc(o)}</option>`).join("")}</select></div>`;
+    const help = f.help ? `<div class="help">${esc(f.help).replace(/\n/g, "<br>")}</div>` : "";
+    if (f.type === "textarea") return `<div class="row"><label for="${id}">${esc(f.label)}${req}</label><textarea id="${id}" name="${f.name}" placeholder="${ph}">${esc(v[f.name])}</textarea>${help}</div>`;
+    if (f.type === "select") return `<div class="row"><label for="${id}">${esc(f.label)}${req}</label><select id="${id}" name="${f.name}">${f.options.map(o => `<option${o === v[f.name] ? " selected" : ""}>${esc(o)}</option>`).join("")}</select>${help}</div>`;
     if (f.type === "radio") return `<div class="row"><span class="lb">${esc(f.label)}</span><div class="radios">${f.options.map(o => `<label class="check"><input type="radio" name="${f.name}" value="${esc(o.value)}"${o.value === v[f.name] ? " checked" : ""}>${esc(o.label)}</label>`).join("")}</div></div>`;
     if (f.type === "checkbox") return `<label class="check"><input type="checkbox" name="${f.name}"${v[f.name] ? " checked" : ""}>${esc(f.label)}</label>`;
-    const help = f.help ? `<div class="help">${esc(f.help).replace(/\n/g, "<br>")}</div>` : "";
+    if (f.type === "multi") {
+      const os = (opts[bot.id + "/" + action.id] || {})[f.name] || f.options || [], sel = v[f.name] || [];
+      const all = [...sel.filter(x => !os.includes(x)), ...os];
+      return `<div class="row"><span class="lb">${esc(f.label)}${sel.length ? ` <small class="muted">${sel.length}개 선택</small>` : ""}</span>
+        ${all.length > 12 ? `<input class="sm multiq" data-multiq="${f.name}" placeholder="목록에서 찾기" aria-label="${esc(f.label)} 찾기">` : ""}
+        <div class="multi" data-multi="${f.name}">${all.length ? all.map(o => `<label class="check"><input type="checkbox" data-mv="${esc(o)}" data-mf="${f.name}"${sel.includes(o) ? " checked" : ""}>${esc(o)}</label>`).join("")
+          : '<span class="muted">선택지를 불러오는 중이거나 없습니다</span>'}</div>${help}</div>`;
+    }
     const dl = f.suggest_action ? ` list="dl_${f.name}"` : "";
     return `<div class="row"><label for="${id}">${esc(f.label)}${req}</label><input id="${id}" type="${f.type === "date" ? "date" : "text"}" name="${f.name}" value="${esc(v[f.name])}" placeholder="${ph}" autocomplete="off"${dl}>${dl ? `<datalist id="dl_${f.name}"></datalist>` : ""}${help}</div>`;
   };
@@ -195,17 +242,50 @@ function renderForm() {
   // 입력란 없이 바로 실행되는 기능(설정 등)은 양식 카드를 숨긴다
   $("formcard").hidden = !fs.length && !!action.auto;
 }
+const touched = {};  // 봇·기능별로 사용자가 직접 고친 칸 — 자동 채우기가 덮어쓰지 않음
 $("form").addEventListener("input", e => {
   const el = e.target, v = draft();
+  if (el.dataset.multiq) {  // multi 목록 거르기 (화면에서만)
+    const qq = el.value.trim().toLowerCase();
+    el.parentNode.querySelectorAll(".multi label").forEach(l => { l.hidden = qq && !l.textContent.toLowerCase().includes(qq); });
+    return;
+  }
+  if (el.dataset.mf) {
+    const a = new Set(v[el.dataset.mf] || []);
+    el.checked ? a.add(el.dataset.mv) : a.delete(el.dataset.mv);
+    v[el.dataset.mf] = [...a];
+    const lb = el.closest(".row").querySelector(".lb small"), n = a.size;
+    if (lb) lb.textContent = n ? `${n}개 선택` : ""; else if (n) el.closest(".row").querySelector(".lb").insertAdjacentHTML("beforeend", ` <small class="muted">${n}개 선택</small>`);
+    return;
+  }
   if (!el.name) return;
   v[el.name] = el.type === "checkbox" ? el.checked : el.value;
+  (touched[bot.id + "/" + action.id] ||= {})[el.name] = true;
   if (el.type === "radio") renderForm();
+});
+// fill_action 이 있는 칸(에픽 키 등)을 입력하면 봇의 숨은 기능으로 나머지 칸을 채운다 (직접 고친 칸은 그대로)
+$("form").addEventListener("change", e => {
+  if ((action.options_on || []).includes(e.target.name)) { const v = draft(); (action.fields || []).filter(f => f.type === "multi").forEach(f => v[f.name] = []); loadOptions(); }
+});
+$("form").addEventListener("change", async e => {
+  const f = (action.fields || []).find(x => x.name === e.target.name && x.fill_action);
+  if (!f || !String(draft()[f.name] ?? "").trim()) return;
+  const k = bot.id + "/" + action.id, act = action;
+  setStatus("run", "기존 하위 문서 확인 중…");
+  const r = await api("/api/run", { bot: bot.id, action: f.fill_action, params: draft() }).catch(() => null);
+  if (action !== act) return;
+  if (!r || !r.ok) { const show = f.name === "epic" && r && r.text; setStatus(show ? "bad" : "", show ? r.text : ""); return; }
+  const v = draft(), t = touched[k] ||= {};
+  Object.entries(r.data.values || {}).forEach(([n, x]) => { if (n !== f.name && !t[n]) v[n] = x; });
+  t[f.name] = true;
+  renderForm();
+  setStatus("ok", `${r.data.epic} ${r.data.epic_summary} — 기존 하위 문서 ${r.data.count}개 기준으로 채웠습니다`);
 });
 
 function setStatus(kind, msg) { const s = $("st"); if (s) { s.className = "status " + kind; s.textContent = msg; } }
 async function submit(e) {
   if (e) e.preventDefault();
-  if (busy) return;
+  if (busy) { setStatus("bad", "다른 기능이 실행 중입니다 — 끝난 뒤 다시 눌러 주세요"); return; }
   const v = draft();
   const miss = (action.fields || []).filter(f => f.required && visible(f, v) && !String(v[f.name] ?? "").trim());
   if (miss.length) { setStatus("bad", `입력 필요: ${miss.map(f => f.label).join(", ")}`); return; }
@@ -216,27 +296,39 @@ $("form").addEventListener("submit", submit);
 
 async function runAction(actId, params) {
   busy = true;
+  // 실행 중에 다른 탭·봇으로 옮겨도 결과는 이 기능에 남기고, 이 기능을 보고 있을 때만 화면에 그린다
+  const k = bot.id + "/" + actId, s = runs[k] = { running: true }, mine = () => curKey() === k;
+  const st = (kind, msg) => { s.status = [kind, msg]; if (mine()) setStatus(kind, msg); };
   const go = $("go"); if (go) go.disabled = true;
+  renderTabs();
   const t0 = Date.now();
-  setStatus("run", "실행 중…");
-  const tick = setInterval(() => setStatus("run", `실행 중… ${Math.round((Date.now() - t0) / 1000)}초`), 1000);
+  st("run", "실행 중…");
+  const tick = setInterval(() => st("run", `실행 중… ${Math.round((Date.now() - t0) / 1000)}초`), 1000);
   let res;
-  try { res = await api("/api/run", { bot: bot.id, action: actId, params }); }
-  catch (err) { res = { ok: false, text: "봇 허브 서버에 연결할 수 없습니다. 터미널에서 hub.py 가 실행 중인지 확인하세요." }; }
-  clearInterval(tick); busy = false;
-  if (go) go.disabled = false;
-  setStatus(res.ok ? "ok" : "bad", res.ok ? `완료 (${((Date.now() - t0) / 1000).toFixed(1)}초)` : "오류");
-  showResult(res);
+  try { res = await api("/api/run", { bot: k.split("/")[0], action: actId, params }); }
+  catch (err) { res = { ok: false, text: "업무 봇 서버에 연결할 수 없습니다. 터미널에서 hub.py 가 실행 중인지 확인하세요." }; }
+  clearInterval(tick); busy = false; s.running = false; s.res = res;
+  if (mine() && $("go")) $("go").disabled = false;
+  st(res.ok ? "ok" : "bad", res.ok ? `완료 (${((Date.now() - t0) / 1000).toFixed(1)}초)` : "오류");
+  if (mine()) showResult(res);
+  if (bot && bot.id === k.split("/")[0]) renderTabs();
   loadHistory();
 }
 
-function showResult(res) {
+function showResult(res, restore) {
   $("resultcard").hidden = false;
+  if (!restore) (runs[curKey()] ||= {}).res = res;
+  const head = res.headline ? `<p class="status ${res.ok ? "ok" : "bad"}">${esc(res.headline)}</p>` : "";
   const raw = res.text ? `<pre class="out">${esc(res.text)}</pre>` : "";
   if (res.view === "cards") $("result").innerHTML = renderCards(res.data);
   else if (res.view === "jira_settings") { $("result").innerHTML = renderSettings(res.data, res.saved); }
   else if (res.view === "jira_plan") $("result").innerHTML = renderPlan(res.data) + (raw ? `<details><summary>실행 로그</summary>${raw}</details>` : "");
-  else $("result").innerHTML = (res.ok ? "" : `<p class="status bad">실행하지 못했습니다</p>`) + (raw || '<p class="empty">출력 없음</p>');
+  else if (res.view === "spec_draft") $("result").innerHTML = renderSpec(res.data) + (raw ? `<details><summary>실행 로그</summary>${raw}</details>` : "");
+  else if (res.view === "spec_list") $("result").innerHTML = renderSpecList(res.data);
+  else if (res.view === "qa_list") { $("result").innerHTML = renderQa(res.data); syncSched(); }
+  else if (res.view === "qa_schedules") $("result").innerHTML = renderSchedules(res.data) + (raw ? `<details><summary>실행 로그</summary>${raw}</details>` : "");
+  else $("result").innerHTML = (head || (res.ok ? "" : `<p class="status bad">실행하지 못했습니다</p>`)) + (raw || '<p class="empty">출력 없음</p>');
+  if (restore) return;
   $("resultcard").scrollIntoView({ block: "nearest", behavior: "smooth" });
   // 명령으로 실행한 경우: 미리보기를 보여 준 뒤 바로 생성 확인
   if (res.view === "jira_plan" && res.data && res.data.auto && !res.data.done) {
@@ -320,11 +412,13 @@ function renderPlan(d) {
     else st = `<span class="pill new">새로 만듦</span>`;
     const lock = d.done || (x.skip && x.skip !== "제외");
     return `<tr class="${on || x.created ? "" : "off"}"><td><input type="checkbox" data-i="${i}" ${on ? "checked" : ""} ${lock ? "disabled" : ""} aria-label="${esc(x.summary)} 생성"></td>
-      <td>${esc(x.summary)}</td><td>${esc(x.assignee ? x.assignee.displayName : "(미지정)")}</td><td>${st}</td></tr>`;
+      <td>${esc(x.summary)}${x.description ? `<details><summary>설명</summary><pre class="out">${esc(x.description)}</pre></details>` : ""}</td><td>${esc(x.assignee ? x.assignee.displayName : "(미지정)")}</td><td>${st}</td></tr>`;
   }).join("");
   const n = p.tasks.filter(x => !x.skip && !x.created).length;
   return `<div class="planmeta"><span>제품 <b>${esc(p.product || "")}</b></span><span>프로젝트 문서 <b>${ep.key ? link(ep.key) : "새로 만듦"}</b> ${esc(ep.summary)}</span>
-      <span>구성요소 <b>${esc(p.components.join(", "))}</b></span><span>레이블 <b>${esc(p.labels.join(", "))}</b></span></div>
+      <span>구성요소 <b>${esc(p.components.join(", "))}</b></span><span>레이블 <b>${esc(p.labels.join(", "))}</b></span>
+      <span>이슈 유형 <b>${esc(p.issuetype)}</b></span><span>보고자 <b>${esc(p.reporter ? p.reporter.displayName : "나")}</b></span>
+      <span>우선순위 <b>${esc(p.priority || "기본값")}</b></span><span>기한 <b>${esc(p.duedate || "-")}</b></span></div>
     <div class="tbl"><table><thead><tr><th></th><th>하위 문서</th><th>담당자</th><th>상태</th></tr></thead><tbody id="planrows">${rows}</tbody></table></div>
     <div class="actions" style="margin-top:14px">${d.done
       ? `<span class="status ok">생성 완료 — ${ep.key ? link(ep.key) : ""}</span>`
@@ -355,6 +449,120 @@ async function applyPlan() {
   loadHistory();
 }
 
+// 기획 사양 정리: 초안 미리보기(위키 모양) · 게시 · 초안 목록
+let spec = null;
+function renderSpec(d) {
+  spec = d;
+  const m = d.meta, pub = m.published;
+  const info = [`상위 페이지 <b>${esc(m.parent.title)}</b>`, `형식 예시 <b>${esc(m.format_ref)}</b>`,
+    m.prev ? `이전 버전 <b>${esc(m.prev.title)} v${m.prev.version}</b> 이어서 작성` : "새 문서",
+    m.sec ? `작성 ${Math.round(m.sec / 60)}분` : "", m.chars ? `자료 ${m.chars.toLocaleString("ko-KR")}자` : ""].filter(Boolean);
+  return `<div class="planmeta">${info.map(x => `<span>${x}</span>`).join("")}</div>
+    ${m.error ? `<p class="status bad">${esc(m.error)} — 게시할 수 없습니다. 초안을 다시 만들어 주세요.</p>` : ""}
+    ${pub ? `<p class="status ok">${esc(pub.how)} (${esc(pub.at)}) — <a href="${esc(pub.url)}" target="_blank" rel="noopener">위키에서 보기</a></p>` : ""}
+    <div class="actions" style="margin-bottom:12px">${m.error ? "" : `<button class="btn danger" type="button" data-spec-pub>${pub ? "위키에 다시 게시" : "위키에 게시"}</button>`}
+      <span class="note" style="margin:0">제목: ${esc(m.title)}</span></div>
+    <details><summary>읽은 자료 ${m.sources.length}개</summary><ul class="help">${m.sources.map(x => `<li>${esc(x)}</li>`).join("")}</ul></details>
+    <iframe class="specview" sandbox="allow-popups allow-popups-to-escape-sandbox" srcdoc="${esc(d.html)}" title="초안 미리보기"></iframe>`;
+}
+function renderSpecList(list) {
+  if (!list.length) return '<p class="empty">아직 만든 초안이 없습니다. [초안 만들기] 탭에서 시작하세요.</p>';
+  const when = c => c.replace(/^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2}).*/, "$1-$2-$3 $4:$5");
+  return `<div class="tbl"><table><thead><tr><th>만든 시각</th><th>문서</th><th>상위 페이지</th><th>상태</th><th></th></tr></thead><tbody>${list.map(x => `<tr>
+    <td class="nowrap">${esc(when(x.created))}</td><td>${esc(x.title)}</td><td>${esc(x.parent)}</td>
+    <td>${x.error ? '<span class="pill sim">형식 오류</span>' : x.published ? `<span class="pill made">게시됨</span> <a href="${esc(x.published.url)}" target="_blank" rel="noopener">보기</a>` : '<span class="pill new">초안</span>'}</td>
+    <td><button class="btn" type="button" data-spec-open="${esc(x.name)}">열기</button></td></tr>`).join("")}</tbody></table></div>`;
+}
+$("result").addEventListener("click", async e => {
+  const o = e.target.closest("[data-spec-open]"), pb = e.target.closest("[data-spec-pub]");
+  if (!o && !pb) return;
+  if (busy) return;
+  if (pb && !confirm(`'${spec.meta.title}' 을(를) 위키 '${spec.meta.parent.title}' 의 하위 문서로 게시합니다.\n같은 제목 페이지가 이미 있으면 그 페이지를 새 버전으로 갱신합니다.\n\n계속할까요?`)) return;
+  busy = true; (o || pb).disabled = true;
+  const res = await api("/api/run", { bot: bot.id, action: o ? "open" : "publish", params: { name: o ? o.dataset.specOpen : spec.name } })
+    .catch(() => ({ ok: false, text: "서버 연결 실패" }));
+  busy = false;
+  showResult(res); loadHistory();
+});
+
+// QA 대응: 찾은 이슈/문의 고르기 → 답변 만들기(엑셀·메일) 또는 같은 조건으로 예약
+let qa = null;
+const DAYS = "월화수목금토일";
+function renderQa(d) {
+  qa = d; d.sel ||= new Set(d.rows.map(x => x.key));
+  const J = d.kind === "jira", jira = k => `<a href="https://jira.coway.com/browse/${esc(k)}" target="_blank" rel="noopener">${esc(k)}</a>`;
+  const rows = d.rows.map(x => `<tr class="${d.sel.has(x.key) ? "" : "off"}"><td><input type="checkbox" data-qk="${esc(x.key)}" ${d.sel.has(x.key) ? "checked" : ""} aria-label="${esc(x.key)} 선택"></td>
+    <td class="nowrap">${J ? jira(x.key) : "#" + esc(x.key)}</td><td>${esc(x.summary)}</td><td>${esc(x.status)}</td><td>${esc(x.versions)}</td><td>${esc(x.assignee)}</td>${J ? `<td>${esc(x.labels)}</td>` : ""}<td class="nowrap">${esc(x.updated)}</td></tr>`).join("");
+  const head = J ? "<th>키</th><th>요약</th><th>상태</th><th>영향받는 버전</th><th>담당자</th><th>레이블</th><th>최근 수정</th>"
+                 : "<th>순번</th><th>문의내역</th><th>문의일자</th><th>산출물/화면</th><th>작성자</th><th>위치</th>";
+  const t = new Date(Date.now() + 864e5), tomorrow = new Date(t - t.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+  return `<div class="planmeta"><span>${J ? `JQL <b>${esc(d.jql)}</b>` : esc(d.note || "")}</span></div>
+    ${d.rows.length ? `<div class="tbl"><table><thead><tr><th><input type="checkbox" data-qall ${d.sel.size === d.rows.length ? "checked" : ""} aria-label="전체 선택"></th>${head}</tr></thead><tbody>${rows}</tbody></table></div>`
+      : '<p class="empty">조건에 맞는 건이 없습니다.</p>'}
+    <div class="qabox">
+      <div class="row"><label for="qa_to">결과 메일 받는 사람</label><input id="qa_to" class="qin" value="${esc(d.to || "")}" placeholder="이메일"></div>
+      <div class="actions"><button class="btn danger" type="button" data-qa-run ${d.sel.size ? "" : "disabled"}>선택한 ${d.sel.size}건 답변 만들기 · 엑셀 메일 발송</button>
+        <span class="note" style="margin:0">건수에 따라 5~20분 걸립니다. ${J ? "Jira" : "문의 문서"}에는 쓰지 않습니다.</span></div>
+      <h3>이 조건으로 예약 발송 <small>예약 시각마다 같은 조건으로 다시 찾아 답변을 만들고 메일로 보냅니다${J ? " (위 선택과 관계없이 조건 전체)" : ""}.</small></h3>
+      <div class="sched">
+        <select id="qa_mode" aria-label="반복"><option value="once">한 번</option><option value="daily">매일</option><option value="weekdays" selected>평일</option><option value="weekly">매주</option></select>
+        <input type="date" id="qa_date" value="${tomorrow}" aria-label="날짜">
+        <span id="qa_days">${[...DAYS].map((x, i) => `<label class="check"><input type="checkbox" value="${i}"${i === 0 ? " checked" : ""}>${x}</label>`).join("")}</span>
+        <input type="time" id="qa_time" value="09:00" aria-label="시각">
+        <input id="qa_label" class="qin" placeholder="예약 이름 (선택)" aria-label="예약 이름">
+        <button class="btn" type="button" data-qa-sched>예약 저장</button>
+      </div>
+    </div>`;
+}
+function syncSched() {
+  const m = $("qa_mode"); if (!m) return;
+  $("qa_date").hidden = m.value !== "once"; $("qa_days").hidden = m.value !== "weekly";
+}
+function renderSchedules(list) {
+  if (!list.length) return '<p class="empty">예약이 없습니다. Jira 이슈 답변·문의사항 답변에서 조건을 찾은 뒤 [예약 저장]을 누르세요.</p>';
+  return `<div class="tbl"><table><thead><tr><th>예약</th><th>반복</th><th>다음 실행</th><th>마지막 실행</th><th>받는 사람</th><th></th></tr></thead><tbody>${list.map(j => `<tr>
+    <td><b>${esc(j.label)}</b><br><small class="muted">${j.kind === "jira" ? "Jira " + esc(j.params.project || "") : esc(j.params.doc || "").slice(0, 60)}</small></td>
+    <td>${esc(j.when_text)}</td><td class="nowrap">${esc(j.next_run || "끝남")}</td>
+    <td>${j.last_run ? `${esc(j.last_run)}<br><small class="muted">${esc(j.last_result || "")}</small>` : "-"}</td><td>${esc(j.to)}</td>
+    <td class="nowrap"><button class="btn" type="button" data-qa-now="${esc(j.id)}">지금 실행</button> <button class="btn" type="button" data-qa-del="${esc(j.id)}">삭제</button></td></tr>`).join("")}</tbody></table></div>
+    <p class="note">PC가 켜져 있으면 업무 봇 화면을 닫아도 10분 간격으로 확인해 실행합니다. 꺼져 있던 동안 지난 예약은 켜진 뒤 한 번 실행합니다.</p>`;
+}
+$("result").addEventListener("change", e => {
+  if (e.target.id === "qa_mode") return syncSched();
+  if (!qa || !(e.target.dataset.qk || e.target.hasAttribute("data-qall"))) return;
+  if (e.target.hasAttribute("data-qall")) qa.sel = new Set(e.target.checked ? qa.rows.map(x => x.key) : []);
+  else e.target.checked ? qa.sel.add(e.target.dataset.qk) : qa.sel.delete(e.target.dataset.qk);
+  const keep = { to: $("qa_to").value };
+  $("result").innerHTML = renderQa(qa); $("qa_to").value = keep.to; syncSched();
+});
+$("result").addEventListener("click", async e => {
+  const run = e.target.closest("[data-qa-run]"), sch = e.target.closest("[data-qa-sched]"), now = e.target.closest("[data-qa-now]"), del = e.target.closest("[data-qa-del]");
+  if (!(run || sch || now || del) || busy) return;
+  let act, params;
+  if (run) {
+    const to = $("qa_to").value.trim();
+    if (!confirm(`${qa.sel.size}건의 답변 초안을 만들어 엑셀로 정리하고 ${to || "기본 주소"} 로 메일을 보냅니다.\n${qa.kind === "jira" ? "Jira" : "문의 문서"}에는 아무것도 쓰지 않습니다. 계속할까요?`)) return;
+    act = "answer"; params = { kind: qa.kind, query: qa.query, keys: [...qa.sel], to };
+  } else if (sch) {
+    const mode = $("qa_mode").value, days = [...$("qa_days").querySelectorAll("input:checked")].map(x => +x.value);
+    act = "schedule"; params = { kind: qa.kind, query: qa.query, to: $("qa_to").value.trim(), label: $("qa_label").value.trim(), when: { mode, date: $("qa_date").value, time: $("qa_time").value, days } };
+  } else if (now) {
+    if (!confirm("이 예약을 지금 한 번 실행하고 메일을 보냅니다. 계속할까요?")) return;
+    act = "run_now"; params = { id: now.dataset.qaNow };
+  } else {
+    if (!confirm("이 예약을 삭제할까요?")) return;
+    act = "unschedule"; params = { id: del.dataset.qaDel };
+  }
+  const b = run || sch || now || del; b.disabled = true; busy = true;
+  const t0 = Date.now(), lbl = b.textContent, tick = setInterval(() => b.textContent = `실행 중… ${Math.round((Date.now() - t0) / 1000)}초`, 1000);
+  const res = await api("/api/run", { bot: bot.id, action: act, params }).catch(() => ({ ok: false, text: "서버 연결 실패" }));
+  clearInterval(tick); busy = false; b.textContent = lbl; b.disabled = false;
+  if (res.view) showResult(res);
+  else if (run || sch) { const box = $("result").querySelector(".qabox"); box.insertAdjacentHTML("beforeend", `<p class="status ${res.ok ? "ok" : "bad"}" style="white-space:pre-wrap">${esc(res.text || "")}</p>`); }
+  else showResult(res);
+  loadHistory();
+});
+
 async function loadHistory() {
   const h = await api("/api/history").catch(() => []);
   $("hist").innerHTML = h.length ? h.map(r => `<div><time>${new Date(r.t * 1000).toLocaleString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })}</time>
@@ -367,7 +575,7 @@ $("tabs").addEventListener("click", e => { const t = e.target.closest(".tab"); i
 
 (async () => {
   try { bots = await api("/api/bots"); }
-  catch (e) { $("title").textContent = "봇 허브 서버에 연결할 수 없습니다"; $("desc").textContent = "터미널에서 python3 hub.py 를 실행하세요."; return; }
+  catch (e) { $("title").textContent = "업무 봇 서버에 연결할 수 없습니다"; $("desc").textContent = "터미널에서 python3 hub.py 를 실행하세요."; return; }
   if (!Array.isArray(bots)) { $("title").textContent = "페이지를 새로 고쳐 주세요"; return; }
   let last = ""; try { last = localStorage.getItem("hub.last") || ""; } catch (e) {}
   const [b, a] = last.split("/");
