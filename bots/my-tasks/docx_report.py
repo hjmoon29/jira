@@ -4,10 +4,36 @@
   - 기한 묶음마다 ▍소제목(H2) + 표 [No. | 할 일 | 근거 · 요청자 | 방법 · 참고 | 기한]
   - 맨 끝 '최근 완료' 2열 표(첫 열 굵게·회색 배경)
 """
-import datetime, os, re
+import datetime, os, re, sys
 
-from docx import Document
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+def _ensure_docx():
+    """python-docx 가 없으면 사용자 폴더에 직접 설치한다(처음 한 번). IoT업무봇은 하위 봇을 -I 로 실행해
+    사용자 폴더 설치(pip --user, Mac 기본)를 못 보므로 그 경로도 찾는다."""
+    import importlib, site
+    d = site.getusersitepackages()
+    if d not in sys.path:
+        sys.path.append(d)
+    try:
+        import docx  # noqa: F401
+        return
+    except ImportError:
+        pass
+    import subprocess
+    r = subprocess.run([sys.executable, "-m", "pip", "install", "--user", "python-docx"], capture_output=True, text=True,
+                       encoding="utf-8", errors="replace", timeout=600)
+    importlib.invalidate_caches()
+    try:
+        import docx  # noqa: F401
+    except ImportError:
+        raise RuntimeError("워드 문서를 만들려면 python-docx 가 필요한데 자동 설치에 실패했습니다. 명령 창에서 직접 설치해 주세요.\n"
+                           f"  {'py -3' if sys.platform == 'win32' else 'python3'} -m pip install --user python-docx\n\n"
+                           + (r.stderr or r.stdout)[-600:])
+
+
+_ensure_docx()
+from docx import Document  # noqa: E402
+from docx.enum.text import WD_ALIGN_PARAGRAPH  # noqa: E402
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.opc.constants import RELATIONSHIP_TYPE as RT

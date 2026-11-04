@@ -22,6 +22,7 @@
 5. 기획 사양 정리·QA 대응 봇은 위키·Figma·Google Drive를 직접 읽는다. 인증 정보는 `~/.config/work-bot/credentials.json`
    (`{"wiki_token": "위키 개인 액세스 토큰", "figma_token": "figd_…", "gdrive_credentials": "구글 인증 파일 경로", "gdrive_oauth": "OAuth 클라이언트 파일 경로"}`),
    없으면 Claude Code MCP 설정(`~/.claude/mcp.json`, `~/.claude.json`)의 confluence·figma·gdrive 값을 찾아 쓴다.
+   위키 토큰·Google(메일 읽기·보내기 + Drive 읽기) 인증은 `인증 설정.command` 더블클릭(Windows: `py -3 auth_setup.py`)으로 한 번에 설정.
    글쓰기는 그 PC의 Claude Code(`claude -p`, 1M 컨텍스트 모델)를 쓰고, 메일은 데일리 써머리의 Gmail 설정(`~/.config/claude-daily/gmail.json`)을 쓴다.
 6. QA 대응 예약: 처음 예약을 저장할 때 10분마다 `bots/qa/scheduler.py` 를 실행하는 OS 작업을 자동 등록한다
    (Windows 작업 스케줄러 `WorkBotQA`, Mac launchd `com.workbot.qa`). 예약 목록·실행 기록은 PC마다 `runs/` 에 따로 있다.

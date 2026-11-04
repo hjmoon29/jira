@@ -571,7 +571,10 @@ def board():
 
 
 def docx_today():
-    import docx_report
+    try:
+        import docx_report
+    except Exception:  # noqa: BLE001 — 워드 모듈이 없어도 할 일 목록은 보여 준다 (워드는 만들 때 설치·안내)
+        return ""
     p = docx_report.default_path()
     return p if os.path.isfile(p) else ""
 
@@ -615,7 +618,10 @@ def mark(tid, status, due="", priority=""):
 # ---------- 워드 문서 ----------
 def save_docx(v, name=None):
     """다운로드 폴더에 '[IoT업무봇] 내 할 일_yymmdd.docx' 저장 (같은 날은 덮어씀, 워드로 열려 있으면 시각 붙여 새로 저장)"""
-    import docx_report
+    try:
+        import docx_report
+    except RuntimeError as e:  # python-docx 자동 설치 실패
+        raise BotError(str(e))
     if name is None:
         try:
             name = whoami().get("name", "")
