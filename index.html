@@ -657,7 +657,9 @@ async function runAction(actId, params, as) {
   renderTabs();
   const t0 = Date.now();
   st("run", "실행 중…");
-  const tick = setInterval(() => st("run", `실행 중… ${Math.round((Date.now() - t0) / 1000)}초`), 1000);
+  // running_hint: 실행이 오래 걸릴 수 있는 기능(설치·로그인 창 등)에서 지금 사용자가 할 일을 함께 보여 준다
+  const hint = ((bot.actions || []).find(a => a.id === actId) || {}).running_hint;
+  const tick = setInterval(() => { const sec = Math.round((Date.now() - t0) / 1000); st("run", `실행 중… ${sec}초` + (hint && sec >= 3 ? ` — ${hint}` : "")); }, 1000);
   let res;
   try { res = await api("/api/run", { bot: k.split("/")[0], action: actId, params }); }
   catch (err) { res = { ok: false, text: "IoT업무봇 서버에 연결할 수 없습니다. 터미널에서 hub.py 가 실행 중인지 확인하세요." }; }

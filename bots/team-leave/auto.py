@@ -15,7 +15,7 @@ def log(msg):
 
 if __name__ == "__main__":
     try:
-        r = tl.check(log=log)
+        r = tl.check(log=log, auto_login=False)  # 자동 실행 중엔 로그인 창을 띄우지 않음
         log(f"완료: 새로 등록 {len(r['added'])}건, 실패 {len(r['errors'])}건")
     except tl.BotError as e:
         log(f"오류: {e}")

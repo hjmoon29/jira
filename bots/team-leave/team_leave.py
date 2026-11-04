@@ -22,10 +22,22 @@ CHANNEL = "msedge" if platform.system() == "Windows" else "chrome"
 KST = dt.timezone(dt.timedelta(hours=9))
 TASK_NAME = "WorkBotTeamLeave"
 CAL = "https://calendar.google.com/calendar/"
+# 로그인 안 된 채 캘린더 주소로 가면 구글이 소개 페이지(workspace.google.com)로 보내므로 로그인 화면으로 바로 연다
+GOOGLE_LOGIN = "https://accounts.google.com/ServiceLogin?service=cl&continue=https%3A%2F%2Fcalendar.google.com%2Fcalendar%2Fr"
 
 
 class BotError(Exception):
     pass
+
+
+SITE_NAMES = {"works": "네이버웍스", "google": "구글 캘린더"}
+
+
+class LoginNeeded(BotError):
+    """로그인이 안 돼 있어 진행할 수 없음. sites = ['works', 'google'] 중 필요한 것"""
+    def __init__(self, sites):
+        self.sites = list(sites)
+        super().__init__(" · ".join(SITE_NAMES[x] for x in self.sites) + " 로그인이 필요합니다.")
 
 
 def config():
@@ -75,22 +87,72 @@ def parse_status(display, statuses):
 
 
 # ---------- 브라우저 ----------
-def _playwright():
+def _import_playwright():
     try:
         from playwright.sync_api import sync_playwright
+        return sync_playwright
     except ImportError:
-        raise BotError("Playwright 가 설치돼 있지 않습니다. 명령 창에서: py -3 -m pip install playwright")
-    return sync_playwright
-
-
-def _open(p, headless=True):
+        pass
+    # IoT업무봇은 하위 봇을 -I 로 실행해 사용자 폴더 설치(pip --user, Mac 기본)를 못 보므로 한 번 더 찾는다
+    import importlib, site
+    for d in (site.getusersitepackages(),):
+        if d not in sys.path:
+            sys.path.append(d)
+    importlib.invalidate_caches()
     try:
-        return p.chromium.launch_persistent_context(PROFILE, channel=CHANNEL, headless=headless, locale="ko-KR",
-                                                    timezone_id="Asia/Seoul", viewport={"width": 1400, "height": 900})
-    except Exception as e:
-        if "lock" in str(e).lower() or "already" in str(e).lower():
-            raise BotError("팀 휴가 봇 브라우저가 이미 열려 있습니다. 그 창을 닫고 다시 시도하세요.")
-        raise BotError(f"브라우저를 열지 못했습니다: {e}")
+        from playwright.sync_api import sync_playwright
+        return sync_playwright
+    except ImportError:
+        return None
+
+
+def _playwright(log=print):
+    sp = _import_playwright()
+    if sp:
+        return sp
+    # 없으면 직접 설치 (사용자 폴더에 설치 — 관리자 권한 불필요)
+    import subprocess
+    log("Playwright 가 없어 설치합니다 (처음 한 번, 1~2분)…")
+    r = subprocess.run([sys.executable, "-m", "pip", "install", "--user", "playwright"], capture_output=True, text=True,
+                       encoding="utf-8", errors="replace", timeout=900)
+    sp = _import_playwright()
+    if not sp:
+        raise BotError("Playwright 자동 설치에 실패했습니다. 명령 창에서 직접 설치해 주세요.\n"
+                       f"  {'py -3' if sys.platform == 'win32' else 'python3'} -m pip install --user playwright\n\n"
+                       + (r.stderr or r.stdout)[-600:])
+    log("Playwright 설치 완료")
+    return sp
+
+
+def _install_chromium(log=print):
+    import subprocess
+    log("브라우저 실행 파일이 없어 Playwright 용 Chromium 을 내려받습니다 (처음 한 번, 1~3분)…")
+    r = subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], capture_output=True, text=True,
+                       encoding="utf-8", errors="replace", timeout=900)
+    if r.returncode:
+        raise BotError("브라우저(Chromium) 설치에 실패했습니다:\n" + (r.stderr or r.stdout)[-600:])
+
+
+def _open(p, headless=True, log=print):
+    opts = dict(headless=headless, locale="ko-KR", timezone_id="Asia/Seoul", viewport={"width": 1400, "height": 900})
+    last = None
+    # 1) 설치된 Edge/Chrome → 2) Playwright 내장 Chromium → 3) 내장 Chromium 설치 후 다시
+    for step in ("channel", "bundled", "install"):
+        try:
+            if step == "install":
+                _install_chromium(log)
+            kw = dict(opts, channel=CHANNEL) if step == "channel" else opts
+            return p.chromium.launch_persistent_context(PROFILE, **kw)
+        except BotError:
+            raise
+        except Exception as e:  # noqa: BLE001
+            msg = str(e).lower()
+            if "lock" in msg or "already" in msg or "processsingleton" in msg:
+                raise BotError("팀 휴가 봇 브라우저 창이 이미 열려 있습니다. 그 창을 닫고 다시 시도하세요.")
+            last = e
+            if step == "bundled" and "executable" not in msg and "install" not in msg:
+                break
+    raise BotError(f"브라우저를 열지 못했습니다: {last}")
 
 
 def _works_ok(page):
@@ -101,27 +163,63 @@ def _google_ok(page):
     return page.url.startswith(CAL)
 
 
-def login(log=print):
-    """창 하나에 탭 두 개(네이버웍스 주소록·구글 캘린더)를 띄워 사용자가 직접 로그인. 둘 다 되면 닫는다."""
+def _banner(ctx, msg):
+    """로그인 창 아래쪽에 할 일 안내 띠를 띄운다 (로그인 화면 포함 모든 페이지)"""
+    js = """(() => { const add = () => { if (!document.body || document.getElementById('__iotbot')) return;
+      const d = document.createElement('div'); d.id = '__iotbot'; d.textContent = %s;
+      d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483647;background:#1d4ed8;color:#fff;'
+        + 'font:600 14px/1.5 sans-serif;padding:10px 16px;text-align:center;pointer-events:none';
+      document.body.appendChild(d); };
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', add); else add(); })();""" % json.dumps(msg, ensure_ascii=False)
+    ctx.add_init_script(js)
+
+
+def login(log=print, sites=("works", "google")):
+    """로그인 창을 띄워 사용자가 직접 로그인. 필요한 곳(sites)이 모두 로그인되면 닫고 True.
+    10분 초과 또는 사용자가 창을 닫으면 False"""
     c = config()
-    with _playwright()() as p:
-        ctx = _open(p, headless=False)
-        w = ctx.pages[0] if ctx.pages else ctx.new_page()
-        w.goto(c["orgunit_url"])
-        g = ctx.new_page()
-        g.goto(CAL + "r")
-        log("열린 창의 두 탭에서 네이버웍스·구글에 각각 로그인해 주세요 (최대 10분)")
+    sites = [x for x in ("works", "google") if x in sites]
+    with _playwright(log)() as p:
+        ctx = _open(p, headless=False, log=log)
+        tabs = " · ".join(f"{i + 1}번째 탭: {SITE_NAMES[x]}" for i, x in enumerate(sites))
+        _banner(ctx, f"IoT업무봇 · 팀 휴가 캘린더 — 이 창에서 로그인해 주세요 ({tabs}). "
+                     "로그인되면 창이 저절로 닫히고 하던 작업을 이어갑니다. (비밀번호는 저장하지 않습니다)")
+        pages = {}
+        for i, x in enumerate(sites):
+            pg = ctx.pages[0] if (i == 0 and ctx.pages) else ctx.new_page()
+            try:
+                pg.goto(c["orgunit_url"] if x == "works" else GOOGLE_LOGIN)
+            except Exception:  # noqa: BLE001 — 로그인 화면으로 넘어가며 생기는 이동 오류는 무시
+                pass
+            pages[x] = pg
+        pages[sites[0]].bring_to_front()
+        log(f"로그인 창을 열었습니다 — {', '.join(SITE_NAMES[x] for x in sites)} 에 로그인해 주세요 (최대 10분)")
         end = time.time() + 600
         ok = False
         while time.time() < end:
             try:
-                if _works_ok(w) and _google_ok(g) and w.locator("span.text strong").count():
+                if all(pg.is_closed() for pg in pages.values()):
+                    break  # 사용자가 창을 닫음
+                done = []
+                for x, pg in pages.items():
+                    if pg.is_closed():
+                        continue
+                    if x == "works" and _works_ok(pg) and pg.locator("span.text strong").count():
+                        done.append(x)
+                    if x == "google" and _google_ok(pg):
+                        done.append(x)
+                    elif x == "google" and "workspace.google.com" in pg.url:  # 소개 페이지로 빠졌으면 로그인 화면으로
+                        pg.goto(GOOGLE_LOGIN)
+                if len(done) == len(pages):
                     ok = True
                     break
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
             time.sleep(2)
-        ctx.close()
+        try:
+            ctx.close()
+        except Exception:  # noqa: BLE001
+            pass
     return ok
 
 
@@ -132,7 +230,7 @@ def read_team(page, c, log=print):
         page.wait_for_selector("span.text strong", timeout=30000)
     except Exception:
         if not _works_ok(page):
-            raise BotError("네이버웍스 로그인이 필요합니다. '로그인' 탭에서 한 번 로그인해 주세요.")
+            raise LoginNeeded(["works"])
         raise BotError("주소록 화면에서 팀원 목록을 찾지 못했습니다(화면 구조가 바뀌었을 수 있음).")
     time.sleep(1.5)
     names = page.eval_on_selector_all("span.text strong", "els => els.map(e => e.textContent.trim())")
@@ -171,7 +269,7 @@ def day_events(page, day):
     """구글 캘린더 일 보기에서 그날 일정 글자 목록 (보이는 캘린더 전부 — 팀 캘린더가 켜져 있어야 함)"""
     page.goto(CAL + f"r/day/{day:%Y/%m/%d}", wait_until="networkidle")
     if not _google_ok(page):
-        raise BotError("Google 캘린더 로그인이 필요합니다. '로그인' 탭에서 다시 로그인해 주세요.")
+        raise LoginNeeded(["google"])
     time.sleep(1.5)
     texts = page.eval_on_selector_all("[data-eventid], [data-eventchip]", "els => els.map(e => e.innerText || e.textContent || '')")
     if not texts:  # 화면 구조가 바뀌었을 때 대비: 본문 전체 글자
@@ -190,7 +288,7 @@ def add_event(page, cal_name, day, title):
     d1 = (day + dt.timedelta(days=1)).strftime("%Y%m%d")
     page.goto(CAL + "r/eventedit?" + urlencode({"text": title, "dates": f"{d0}/{d1}"}), wait_until="networkidle")
     if not _google_ok(page):
-        raise BotError("Google 캘린더 로그인이 필요합니다. '로그인' 탭에서 다시 로그인해 주세요.")
+        raise LoginNeeded(["google"])
     _calendar_pick(page, cal_name)
     save = page.locator("button[jsname='x8hlje']")
     if not save.count():
@@ -210,17 +308,54 @@ def add_event(page, cal_name, day, title):
 
 
 # ---------- 실행 ----------
-def check(log=print, register=True):
+def _missing_logins(page, c):
+    """네이버웍스·구글 로그인 상태를 미리 확인해 로그인이 필요한 곳 목록"""
+    miss = []
+    try:
+        read_team(page, c)
+    except LoginNeeded:
+        miss.append("works")
+    except BotError:
+        pass  # 로그인 말고 다른 문제는 본 작업에서 그대로 알린다
+    try:
+        page.goto(CAL + "r", wait_until="domcontentloaded")
+        time.sleep(1.5)
+        if not _google_ok(page):
+            miss.append("google")
+    except Exception:  # noqa: BLE001
+        miss.append("google")
+    return miss
+
+
+def check(log=print, register=True, auto_login=True):
+    """check 실행. 로그인이 필요하면(auto_login) 로그인 창을 띄워 로그인을 받은 뒤 이어서 진행한다."""
+    for attempt in range(3):
+        try:
+            return _check(log, register, preflight=auto_login and attempt == 0)
+        except LoginNeeded as e:
+            if not auto_login or attempt == 2:
+                raise BotError(f"{e} '로그인' 탭에서 로그인한 뒤 다시 실행해 주세요.")
+            log(f"🔑 {e} 로그인 창을 엽니다 — 열린 브라우저 창에서 로그인해 주세요.")
+            if not login(log, e.sites):
+                raise BotError(f"{e} 로그인 창에서 10분 안에 로그인되지 않았거나 창이 닫혀 중단했습니다. 다시 실행해 주세요.")
+            log("✅ 로그인 확인 — 이어서 진행합니다.")
+
+
+def _check(log=print, register=True, preflight=False):
     """지금 팀원 상태를 읽고, 대상 상태인 사람을 오늘 날짜로 팀 캘린더에 등록. 결과 dict"""
     c = config()
     st = load_state()
     today = dt.datetime.now(KST).date()
     done_keys = {(d["date"], d["name"], d["status"]) for d in st.get("done", [])}
     people, added, errors = [], [], []
-    with _playwright()() as p:
-        ctx = _open(p)
+    with _playwright(log)() as p:
+        ctx = _open(p, log=log)
         page = ctx.pages[0] if ctx.pages else ctx.new_page()
         try:
+            if preflight:  # 두 곳을 한 번에 확인해 로그인 창을 한 번만 띄운다
+                miss = _missing_logins(page, c)
+                if miss:
+                    raise LoginNeeded(miss)
             for disp in read_team(page, c, log):
                 name, status = parse_status(disp, c["statuses"])
                 people.append({"name": name, "display": disp, "status": status})
@@ -253,6 +388,8 @@ def check(log=print, register=True):
                     added.append(title)
                     x["result"] = "등록함"
                     log(f"등록: {today:%m/%d} {title} → {c['calendar']}")
+                except LoginNeeded:
+                    raise
                 except BotError as e:
                     x["result"] = f"실패: {e}"
                     errors.append(f"{title}: {e}")

@@ -20,7 +20,11 @@ def _run(register):
     try:
         r = tl.check(log=log.append, register=register)
     except tl.BotError as e:
-        out(ok=False, text="\n".join(log + [str(e)]), summary=str(e)[:120])
+        out(ok=False, headline="⚠️ " + str(e).split("\n")[0], text="\n".join(log + [str(e)]), summary=str(e)[:120])
+    except Exception as e:  # noqa: BLE001 — 예상 못한 오류도 무엇이 문제인지 보여 준다
+        import traceback
+        msg = f"예상 못한 오류: {type(e).__name__}: {e}"
+        out(ok=False, headline="⚠️ " + msg[:200], text="\n".join(log + [msg, "", traceback.format_exc()[-1500:]]), summary=msg[:120])
     tgt = [x for x in r["people"] if x["status"]]
     head = (f"새로 등록 {len(r['added'])}건" if register else f"휴가 상태 {len(tgt)}명 (미리보기, 등록 안 함)")
     if r["errors"]:
@@ -38,10 +42,11 @@ def preview(q):
 
 
 def login(q):
+    log = []
     try:
-        ok = tl.login()
+        ok = tl.login(log.append)
     except tl.BotError as e:
-        out(ok=False, text=str(e))
+        out(ok=False, text="\n".join(log + [str(e)]))
     out(ok=ok, text="로그인 완료. 이제 '지금 확인'과 자동 확인이 동작합니다." if ok else "10분 안에 두 곳 모두 로그인되지 않아 창을 닫았습니다. 다시 시도해 주세요.",
         summary="로그인 완료" if ok else "로그인 시간 초과")
 
