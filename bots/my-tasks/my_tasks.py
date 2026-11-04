@@ -284,6 +284,10 @@ def src_drive(state, days, me, conf, log):
         tok = r.get("nextPageToken")
         if not tok:
             break
+    # 지난번 읽기에 실패한 파일(예: 엑셀 모듈 없음)은 수정 시각과 관계없이 다시 시도한다
+    retry = state.setdefault("drive_retry", {})
+    ids = {f["id"] for f in files}
+    files += [f for k, f in retry.items() if k not in ids]
     par = folder_map(root["driveId"]) if root.get("driveId") else {}
 
     def under(pid, again=True):
@@ -310,8 +314,10 @@ def src_drive(state, days, me, conf, log):
         try:
             text = sd.drive_source(f["id"])["text"]
         except Exception as e:
-            log(f"  Drive 읽기 실패: {f['name']} ({str(e)[:80]})")
+            log(f"  Drive 읽기 실패: {f['name']} ({str(e)[:80]}) — 다음 실행 때 다시 시도")
+            retry[f["id"]] = f
             continue
+        retry.pop(f["id"], None)
         cpath = os.path.join(CACHE, f["id"] + ".txt")
         old = open(cpath, encoding="utf-8").read() if os.path.isfile(cpath) else None
         open(cpath, "w", encoding="utf-8").write(text)

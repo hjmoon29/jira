@@ -12,6 +12,10 @@
 import datetime, html, html.entities, io, json, os, re, shutil, subprocess, sys, time, zipfile
 import urllib.error, urllib.parse, urllib.request
 import xml.etree.ElementTree as ET
+import site
+# IoT업무봇은 하위 봇을 -I 로 실행해 사용자 폴더 설치(pip --user, Mac 기본)를 못 보므로 그 경로도 찾는다 (openpyxl 등)
+if site.getusersitepackages() not in sys.path:
+    sys.path.append(site.getusersitepackages())
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RUNS = os.environ.get("BOT_HUB_RUNS") or os.path.join(HERE, "..", "..", "runs")
