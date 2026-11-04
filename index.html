@@ -1248,7 +1248,7 @@ function renderPs(d) {
       <tr>${d.stages.map(s => { const m = s.label.match(/^사양 전달 · (.+)$/); return `<th title="${esc(s.help || s.label)}">${m ? `<small>사양 전달</small>${esc(m[1])}` : esc(s.label)}</th>`; }).join("")}</tr></thead>
       <tbody>${list.map(row).join("")}</tbody></table></div>`
       : `<p class="empty">${d.products.length ? "표시할 제품이 없습니다 (종료된 제품 숨김)." : "아직 등록한 제품이 없습니다. [+ 제품 추가] 또는 [Jira에서 내 제품 불러오기]로 시작하세요."}</p>`}
-    <p class="note">${d.updated ? `마지막 수정 ${esc(d.updated)}` : ""}${d.jira_at ? ` · Jira 채우기 ${esc(d.jira_at)}` : ""}</p>`;
+    <p class="note">${d.updated ? `마지막 수정 ${esc(d.updated)}` : ""}${d.jira_at ? ` · Jira 채우기 ${esc(d.jira_at)}` : ""}${d.store ? `<br>저장 위치: ${esc(d.store)}` : ""}</p>`;
 }
 function psMsg(kind, text) { const m = $("psmsg"); if (m) { m.hidden = !text; m.className = "status " + kind; m.textContent = text; } }
 async function psCall(act, params) {

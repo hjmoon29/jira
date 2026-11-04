@@ -25,7 +25,17 @@ def _drive_root():
     for base in sorted(glob.glob(os.path.join(home, "Library", "CloudStorage", "GoogleDrive-*"))):
         cands += [os.path.join(base, "내 드라이브"), os.path.join(base, "My Drive")]
     cands += [os.path.join(home, "Google Drive", "내 드라이브"), os.path.join(home, "Google Drive", "My Drive")]
+    global DRIVE_TRIED
+    cs = os.path.join(home, "Library", "CloudStorage")
+    if sys.platform == "darwin":
+        try:
+            DRIVE_TRIED = "CloudStorage 안: " + (", ".join(os.listdir(cs)) or "비어 있음")
+        except OSError as e:
+            DRIVE_TRIED = f"CloudStorage 를 읽지 못함 ({e.__class__.__name__}: 권한 확인 필요)"
     return next((c for c in cands if os.path.isdir(c)), None)
+
+
+DRIVE_TRIED = ""
 
 
 def _data_dir():
@@ -84,7 +94,8 @@ def board(d=None):
     d = d or load()
     c = cfg()
     return {"stages": c["stages"], "statuses": c["statuses"], "products": d["products"],
-            "updated": d.get("updated"), "jira_at": d.get("jira_at")}
+            "updated": d.get("updated"), "jira_at": d.get("jira_at"),
+            "store": ("Google Drive · " if DATA_DIR != LOCAL_DIR else "이 PC (Google Drive 폴더를 못 찾음" + (f" — {DRIVE_TRIED}" if DRIVE_TRIED else "") + ") · ") + DATA}
 
 
 def find(d, pid):
