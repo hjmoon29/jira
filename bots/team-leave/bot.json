@@ -1,0 +1,26 @@
+{
+  "name": "팀 휴가 캘린더",
+  "icon": "🌴",
+  "order": 7,
+  "group": "내 업무",
+  "tagline": "메신저 휴가 상태 → 팀 캘린더 일정",
+  "description": "네이버웍스 주소록에서 우리 팀원 이름 뒤 상태('휴가', '휴가(오전)', '휴가(오후)', '경조휴가')를 확인해, Google 캘린더 'IoT기획팀' 캘린더에 그날 종일 일정 '이름 상태'(예: 문효준 휴가(오후))로 등록합니다. 같은 날 같은 사람·같은 상태는 한 번만 등록합니다. 평일 정해진 시각에 자동으로 확인하며, 처음 한 번은 '로그인' 탭에서 네이버웍스·구글 로그인이 필요합니다.",
+  "actions": [
+    {"id": "board", "label": "등록 현황", "auto": true, "timeout": 30, "fields": []},
+    {"id": "run", "label": "지금 확인", "button": "지금 확인·등록", "timeout": 300, "fields": [],
+     "extra": [{"action": "preview", "button": "미리보기 (등록 안 함)", "no_required": true}]},
+    {"id": "preview", "label": "미리보기", "hidden": true, "timeout": 300},
+    {"id": "settings", "label": "설정", "button": "저장", "timeout": 120, "init_action": "settings_init",
+     "fields": [
+       {"name": "auto", "label": "평일 자동 확인", "type": "checkbox", "default": true},
+       {"name": "times", "label": "확인 시각 (HH:MM, 쉼표로 여러 개)", "type": "text", "placeholder": "08:40, 10:00, 13:30",
+        "help": "휴가 상태는 보통 그날만 표시되므로 아침·오전·점심 이후에 여러 번 확인하는 것을 권합니다."},
+       {"name": "calendar", "label": "등록할 구글 캘린더 이름", "type": "text", "placeholder": "IoT기획팀"},
+       {"name": "title_format", "label": "일정 제목 형식", "type": "text", "placeholder": "{name} {status}"},
+       {"name": "statuses", "label": "등록할 상태 (쉼표로)", "type": "text", "placeholder": "휴가, 휴가(오전), 휴가(오후), 경조휴가"},
+       {"name": "orgunit_url", "label": "팀 주소록 주소 (네이버웍스)", "type": "text"}
+     ]},
+    {"id": "login", "label": "로그인", "button": "로그인 창 열기", "timeout": 630, "fields": [],
+     "confirm": "창 하나에 네이버웍스 주소록·구글 캘린더 탭을 엽니다. 두 탭에서 각각 로그인하면 자동으로 닫힙니다."}
+  ]
+}

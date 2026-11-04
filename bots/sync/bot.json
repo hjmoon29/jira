@@ -4,7 +4,7 @@
   "order": 90,
   "group": "system",
   "tagline": "팀원·PC 간 봇 코드 맞추기",
-  "description": "모든 PC·팀원이 같은 IoT업무봇을 쓰도록 Git 저장소와 맞춥니다. 다른 사람이 고친 봇·설정을 받거나, 이 PC에서 고친 것을 올립니다.",
+  "description": "모든 PC·팀원이 같은 IoT업무봇을 쓰도록 Git 저장소와 맞춥니다. 다른 사람이 고친 봇·설정을 받거나, 이 PC에서 고친 것을 올립니다. 올리기 전에 올릴 파일 목록을 보여 주고, 토큰·비밀번호·API 키가 섞여 있으면 올리지 않습니다.",
   "actions": [
     {"id": "status", "label": "상태", "auto": true, "timeout": 60, "fields": []},
     {"id": "connect", "label": "저장소 연결", "button": "연결", "timeout": 320,
@@ -16,9 +16,14 @@
       "label": "변경 올리기",
       "button": "올리기",
       "timeout": 180,
+      "init_action": "push_init",
       "confirm": "이 PC에서 바뀐 IoT업무봇 파일을 회사 Git 저장소에 올립니다. 계속할까요?",
       "fields": [{"name": "message", "label": "무엇을 바꿨나요 (기록용 한 줄)", "type": "text", "required": true,
-                  "placeholder": "Jira 기본 하위 문서에 'DR3 체크리스트' 추가"}]
-    }
+                  "placeholder": "Jira 기본 하위 문서에 'DR3 체크리스트' 추가",
+                  "help": "바뀐 파일을 보고 초안을 채워 둡니다. 고쳐서 써도 됩니다.\n올리기 전에 토큰·비밀번호·API 키 검사를 하고, 의심되는 값이 있으면 올리지 않습니다."}],
+      "extra": [{"action": "preview", "button": "올릴 파일 미리보기", "no_required": true}]
+    },
+    {"id": "preview", "label": "올릴 파일 미리보기", "hidden": true, "timeout": 60},
+    {"id": "push_init", "label": "메시지 초안", "hidden": true, "timeout": 30}
   ]
 }

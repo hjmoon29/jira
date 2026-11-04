@@ -11,7 +11,7 @@ if not defined PY (
   exit /b 1
 )
 echo [1/2] Installing packages: playwright, openpyxl
-%PY% -m pip install --user --quiet playwright openpyxl
+%PY% -m pip install --user --quiet playwright openpyxl python-docx faster-whisper "av>=11,<16"
 echo [2/2] Jira token and Claude Code skills
 %PY% setup.py
 echo.

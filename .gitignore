@@ -14,3 +14,6 @@ token
 bots/daily-summary/export/
 bots/daily-summary/summaries.json
 *.bak*
+
+# 직원 친밀도: 나만 보기 (팀 배포·GitHub 제외)
+bots/intimacy/

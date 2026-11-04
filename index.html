@@ -10,7 +10,7 @@
   --bg: #F4F5F7; --panel: #FFFFFF; --fg: #1B1F24; --muted: #616A75; --line: #DDE1E6; --chip: #ECEFF3;
   --accent: #2F5BD3; --accent-soft: #E3EAFB; --ok: #1F8A4C; --ok-soft: #E1F3E8; --bad: #C2412D; --bad-soft: #FBE6E2;
   --warn: #A86B00; --warn-soft: #FDF1D8;
-  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4;
   --sans: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, monospace;
   color-scheme: light;
@@ -20,7 +20,7 @@
     --bg: #111418; --panel: #1A1E24; --fg: #E6E9ED; --muted: #98A2AE; --line: #2C323A; --chip: #242A31;
     --accent: #7FA2F5; --accent-soft: #1E2A44; --ok: #5BC98A; --ok-soft: #173325; --bad: #F08A73; --bad-soft: #3A221D;
     --warn: #E8B24F; --warn-soft: #3A2E15; color-scheme: dark;
-    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181;
   }
 }
 * { box-sizing: border-box; }
@@ -205,6 +205,29 @@ body.navmini .navtoggle svg { transform: rotate(180deg); }
 .app.mini .bot > span:last-child { display: none; }
 .app.mini main { max-width: none; }
 @media (max-width: 760px) { .app.mini { grid-template-columns: minmax(0, 1fr); } .app.mini aside { display: none; } }
+/* 직원 친밀도 */
+.imseg { display: inline-flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.imseg .tab { border: 0; border-radius: 0; margin: 0; padding: 6px 14px; font-size: 13px; border-right: 1px solid var(--line); }
+.imseg .tab:last-child { border-right: 0; }
+.imseg .tab[aria-pressed="true"] { background: var(--brand-2); color: #fff; font-weight: 700; }
+.imgrid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 18px; margin-top: 16px; }
+@media (max-width: 1000px) { .imgrid { grid-template-columns: minmax(0, 1fr); } }
+.imgrid h3 { font-size: 14px; margin: 0 0 8px !important; }
+.imgrid h3 small { display: inline; margin-left: 6px; }
+.imsrc { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); margin-right: 8px; white-space: nowrap; }
+.imsrc i, .ulegend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; }
+.imup { color: var(--ok); font-size: 12px; font-weight: 700; } .imdn { color: var(--bad); font-size: 12px; font-weight: 700; }
+tr.imme td { background: var(--sky); }
+.ub:not(.inp) rect:not(.hit) { opacity: .45; }
+.imh { font-size: 16px !important; margin: 4px 0 10px !important; }
+.imh small { display: inline !important; margin-left: 6px; color: var(--brand-2) !important; font-weight: 700; }
+.imbar { position: relative; min-width: 110px; }
+.imbar span { position: absolute; left: 0; top: 50%; height: 8px; margin-top: -4px; border-radius: 0 4px 4px 0; background: var(--brand-2); opacity: .22; }
+.imbar b { position: relative; padding-left: 6px; }
+details.imall { margin-top: 22px; border: 1px solid var(--line); border-radius: 4px; padding: 4px 14px 10px; background: var(--bg); }
+details.imall > summary { font-size: 14px; color: var(--fg); font-weight: 700; margin: 6px 0; }
+details.imall .imgrid.sub { margin-top: 8px; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+details.imall table { font-size: 12.5px; }
 /* 제품별 진행상황 */
 main:has(.psmx) { max-width: none; }
 .psbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
@@ -389,8 +412,11 @@ const ICON_PATHS = {
   "jira-tasks": '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M9 11h6M9 15h4"/><path d="M17 15v4M15 17h4"/>',
   "spec-doc": '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h6"/>',
   "my-tasks": '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8l1.5 1.5L12 7"/><path d="M8 14l1.5 1.5L12 13"/><path d="M14 8h3M14 14h3"/>',
+  "intimacy": '<circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M2.5 19c.6-3 2.8-5 5.5-5s4.9 2 5.5 5"/><path d="M13.5 14.3c.8-.2 1.6-.3 2.5-.3 2.7 0 4.9 2 5.5 5"/>',
   "product-status": '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11"/><path d="M12 13l1.2 1.2L15.5 12"/><path d="M12 17.5h5"/>',
   "figma-ux": '<rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M9 6h6"/><rect x="9" y="9" width="6" height="4" rx=".5"/><path d="M9 16h6M10 19h4"/>',
+  "team-leave": '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><circle cx="12" cy="15.5" r="2"/><path d="M12 11.8v.6M12 18.6v.6M8.3 15.5h.6M15.1 15.5h.6"/>',
+  "minutes": '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0 0 12 0"/><path d="M12 17v4M9 21h6"/>',
   "qa": '<path d="M21 12a8 8 0 0 1-11.5 7.2L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5"/><path d="M12 16h.01"/>',
   "ims": '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/><path d="M7 12l3-3 2 2 4-4"/>',
   "daily-summary": '<path d="M4 20V4"/><path d="M4 20h16"/><rect x="7" y="12" width="3" height="5" rx=".5"/><rect x="12" y="8" width="3" height="9" rx=".5"/><rect x="17" y="10" width="3" height="7" rx=".5"/>',
@@ -478,6 +504,11 @@ function renderForm() {
     if (f.type === "select") return `<div class="row"><label for="${id}">${esc(f.label)}${req}</label><select id="${id}" name="${f.name}">${f.options.map(o => `<option${o === v[f.name] ? " selected" : ""}>${esc(o)}</option>`).join("")}</select>${help}</div>`;
     if (f.type === "radio") return `<div class="row"><span class="lb">${esc(f.label)}</span><div class="radios">${f.options.map(o => `<label class="check"><input type="radio" name="${f.name}" value="${esc(o.value)}"${o.value === v[f.name] ? " checked" : ""}>${esc(o.label)}</label>`).join("")}</div></div>`;
     if (f.type === "checkbox") return `<label class="check"><input type="checkbox" name="${f.name}"${v[f.name] ? " checked" : ""}>${esc(f.label)}</label>`;
+    if (f.type === "file") {
+      const sel = fileSel[bot.id + "/" + action.id + "/" + f.name];
+      return `<div class="row"><label for="${id}">${esc(f.label)}${req}</label><input id="${id}" type="file" name="${f.name}"${f.accept ? ` accept="${esc(f.accept)}"` : ""}>
+        <div class="help" data-file-name="${f.name}">${sel ? `선택됨: <b>${esc(sel.name)}</b> (${(sel.size / 1048576).toFixed(1)}MB)` : ""}</div>${help}</div>`;
+    }
     if (f.type === "multi") {
       const os = (opts[bot.id + "/" + action.id] || {})[f.name] || f.options || [], sel = v[f.name] || [];
       const all = [...sel.filter(x => !os.includes(x)), ...os];
@@ -501,6 +532,28 @@ function renderForm() {
   $("formcard").hidden = !fs.length && !!action.auto;
 }
 const touched = {};  // 봇·기능별로 사용자가 직접 고친 칸 — 자동 채우기가 덮어쓰지 않음
+const fileSel = {};  // 파일 칸에 고른 파일 (봇/기능/칸 이름 → File) — 실행할 때 서버로 올린다
+$("form").addEventListener("change", e => {
+  const el = e.target;
+  if (el.type !== "file") return;
+  const k = bot.id + "/" + action.id + "/" + el.name, f = el.files && el.files[0];
+  if (f) fileSel[k] = f; else delete fileSel[k];
+  draft()[el.name] = f ? f.name : "";
+  const h = $("form").querySelector(`[data-file-name="${el.name}"]`);
+  if (h) h.innerHTML = f ? `선택됨: <b>${esc(f.name)}</b> (${(f.size / 1048576).toFixed(1)}MB)` : "";
+});
+function uploadFile(file, onp) {  // 진행률을 보여 주려고 fetch 대신 XHR
+  return new Promise((ok, no) => {
+    const x = new XMLHttpRequest();
+    x.open("POST", "/api/upload");
+    x.setRequestHeader("X-Hub-Key", KEY);
+    x.setRequestHeader("X-File-Name", encodeURIComponent(file.name));
+    x.upload.onprogress = e => e.lengthComputable && onp(e.loaded / e.total);
+    x.onload = () => { try { const r = JSON.parse(x.responseText); r.ok ? ok(r) : no(new Error(r.text)); } catch (err) { no(err); } };
+    x.onerror = () => no(new Error("서버 연결 실패"));
+    x.send(file);
+  });
+}
 $("form").addEventListener("input", e => {
   const el = e.target, v = draft();
   if (el.dataset.multiq) {  // multi 목록 거르기 (화면에서만)
@@ -516,7 +569,7 @@ $("form").addEventListener("input", e => {
     if (lb) lb.textContent = n ? `${n}개 선택` : ""; else if (n) el.closest(".row").querySelector(".lb").insertAdjacentHTML("beforeend", ` <small class="muted">${n}개 선택</small>`);
     return;
   }
-  if (!el.name) return;
+  if (!el.name || el.type === "file") return;
   v[el.name] = el.type === "checkbox" ? el.checked : el.value;
   (touched[bot.id + "/" + action.id] ||= {})[el.name] = true;
   // follows: {field, minutes} — 기준 칸(시작 시각)을 바꾸면 이 칸(종료 시각)을 N분 뒤로 맞춘다 (선택지 끝을 넘으면 마지막 값)
@@ -561,7 +614,22 @@ async function submit(e) {
   const miss = (action.fields || []).filter(f => f.required && visible(f, v) && !String(v[f.name] ?? "").trim());
   if (miss.length) { setStatus("bad", `입력 필요: ${miss.map(f => f.label).join(", ")}`); return; }
   if (action.confirm && !confirm(action.confirm)) return;
-  await runAction(action.id, Object.fromEntries((action.fields || []).filter(f => visible(f, v)).map(f => [f.name, v[f.name]])));
+  const params = Object.fromEntries((action.fields || []).filter(f => visible(f, v)).map(f => [f.name, v[f.name]]));
+  for (const f of (action.fields || []).filter(f => f.type === "file" && visible(f, v))) {
+    const file = fileSel[bot.id + "/" + action.id + "/" + f.name];
+    if (!file) { if (f.required) { setStatus("bad", `입력 필요: ${f.label}`); return; } continue; }
+    busy = true; const go = $("go"); if (go) go.disabled = true;
+    try {
+      const r = await uploadFile(file, x => setStatus("run", `파일 올리는 중… ${Math.round(x * 100)}%`));
+      params[f.name] = r.path; params[f.name + "_name"] = file.name;
+    } catch (err) { busy = false; if (go) go.disabled = false; setStatus("bad", "파일 올리기 실패: " + err.message); return; }
+    busy = false; if (go) go.disabled = false;
+  }
+  await runAction(action.id, params);
+  if (action.fields && action.fields.some(f => f.type === "file")) {  // 다 올렸으면 파일 칸 비움
+    action.fields.filter(f => f.type === "file").forEach(f => { delete fileSel[bot.id + "/" + action.id + "/" + f.name]; draft()[f.name] = ""; });
+    renderForm();
+  }
 }
 $("form").addEventListener("submit", submit);
 // 추가 버튼: 같은 입력값으로 다른(숨은) 기능을 실행하고, 결과는 지금 보고 있는 탭에 보여 준다
@@ -573,7 +641,7 @@ $("form").addEventListener("click", async e => {
   if (x.dialog === "jira_values") { openValues(); return; }
   if (busy) { setStatus("bad", "다른 기능이 실행 중입니다 — 끝난 뒤 다시 눌러 주세요"); return; }
   const v = draft();
-  const miss = (action.fields || []).filter(f => f.required && visible(f, v) && !String(v[f.name] ?? "").trim());
+  const miss = x.no_required ? [] : (action.fields || []).filter(f => f.required && visible(f, v) && !String(v[f.name] ?? "").trim());
   if (miss.length) { setStatus("bad", `입력 필요: ${miss.map(f => f.label).join(", ")}`); return; }
   if (x.confirm && !confirm(x.confirm)) return;
   await runAction(x.action, Object.fromEntries((action.fields || []).filter(f => visible(f, v)).map(f => [f.name, v[f.name]])), action.id);
@@ -617,6 +685,9 @@ function showResult(res, restore) {
   else if (res.view === "ux_plan") $("result").innerHTML = renderUx(res.data) + (raw ? `<details><summary>실행 로그</summary>${raw}</details>` : "");
   else if (res.view === "ux_list") $("result").innerHTML = renderUxList(res.data);
   else if (res.view === "my_tasks") $("result").innerHTML = renderMyTasks(res.data) + (raw ? `<details><summary>실행 로그</summary>${raw}</details>` : "");
+  else if (res.view === "minutes_list") { $("result").innerHTML = head + renderMinList(res.data); pollMinutes(res.data); }
+  else if (res.view === "minutes_doc") $("result").innerHTML = (res.ok ? "" : `<p class="status bad">${esc(res.text || "오류")}</p>`) + renderMinDoc(res.data);
+  else if (res.view === "intimacy") { $("result").innerHTML = renderIntimacy(res.data) + (raw ? `<details><summary>반영 기록</summary>${raw}</details>` : ""); bindIntimacy(); }
   else if (res.view === "product_status") $("result").innerHTML = renderPs(res.data) + (raw ? `<details${res.quiet ? "" : " open"}><summary>실행 결과</summary>${raw}</details>` : "") + (res.ok ? "" : `<p class="status bad">${esc(res.text || "오류")}</p>`);
   else if (res.view === "qa_list") { $("result").innerHTML = renderQa(res.data); syncSched(); }
   else if (res.view === "qa_schedules") $("result").innerHTML = renderSchedules(res.data) + (raw ? `<details><summary>실행 로그</summary>${raw}</details>` : "");
@@ -773,6 +844,126 @@ function bindUsage(d) {
   });
   plot.addEventListener("mouseleave", () => { tip.hidden = true; plot.querySelectorAll(".ub.on").forEach(x => x.classList.remove("on")); });
 }
+
+// 직원 친밀도: 기간(일간·주간·월간)·범위(전체/나와의 관계) 선택, 실시간 반영, 최근 30일 누적 막대 + 순위표
+const IM_SRC = ["mail", "msg", "jira", "wiki", "sheet"];  // 색은 소스 순서대로 고정 (순위와 무관)
+const IM_COLORS = ["var(--s1)", "var(--s2)", "var(--s3)", "var(--s4)", "var(--s5)"];
+let im = null, imOpt = { period: "week" }, imBusy = false;
+try { Object.assign(imOpt, JSON.parse(localStorage.getItem("hub.im") || "{}")); } catch (e) {}
+function imChart(series, id, label, W = 960, H = 240) {
+  const days = series, n = days.length, tot = x => IM_SRC.reduce((a, s) => a + (x[s] || 0), 0);
+  const max = Math.max(1, ...days.map(tot)), step = 10 ** Math.floor(Math.log10(max)), top = Math.ceil(max / step) * step;
+  const L = 40, R = 8, T = 12, B = 28, pw = W - L - R, ph = H - T - B, bw = pw / n, gap = Math.min(6, bw * .25), y = v => T + ph - v / top * ph;
+  let bars = "";
+  days.forEach((x, i) => {
+    let base = 0, segs = "";
+    IM_SRC.forEach((s, j) => {
+      const v = x[s] || 0; if (!v) return;
+      const y1 = y(base + v), h = Math.max(1, y(base) - y1 - (base ? 2 : 0));
+      segs += `<rect x="${(L + i * bw + gap / 2).toFixed(1)}" y="${y1.toFixed(1)}" width="${(bw - gap).toFixed(1)}" height="${h.toFixed(1)}" rx="${Math.min(4, (bw - gap) / 2)}" fill="${IM_COLORS[j]}"/>`;
+      base += v;
+    });
+    const inP = x.day >= im.range[0] && x.day <= im.range[1];
+    bars += `<g class="ub${inP ? " inp" : ""}" data-i="${i}" data-s="${id}"><rect class="hit" x="${(L + i * bw).toFixed(1)}" y="${T}" width="${bw.toFixed(1)}" height="${ph}"/>${segs}</g>`;
+  });
+  const grid = [0, .5, 1].map(f => Math.round(top * f)).map(t => `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}"/><text x="${L - 8}" y="${y(t) + 4}" text-anchor="end">${num(t)}</text>`).join("");
+  const every = W < 700 ? 7 : 5, xl = days.map((x, i) => i % every ? "" : `<text x="${(L + i * bw + bw / 2).toFixed(1)}" y="${H - 10}" text-anchor="middle">${x.day.slice(5).replace("-", "/")}</text>`).join("");
+  return `<div class="uplot"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}"><g class="ugrid">${grid}</g><g class="ux">${xl}</g>${bars}</svg><div class="utip imtip" hidden></div></div>`;
+}
+function renderIntimacy(d) {
+  im = d;
+  const S = d.sources, P = { day: "오늘", week: "이번 주", month: "이번 달" }, md = s => s ? s.slice(5).replace("-", "/") : "";
+  const who = (n, t) => `<b>${esc(n)}</b>${t ? ` <span class="muted">${esc(t)}</span>` : ""}`;
+  const move = (r, pr) => pr == null ? '<span class="pill new">NEW</span>' : pr > r ? `<span class="imup">▲${pr - r}</span>` : pr < r ? `<span class="imdn">▼${r - pr}</span>` : '<span class="muted">–</span>';
+  const by = v => IM_SRC.filter(s => v[s]).map(s => `<span class="imsrc"><i style="background:${IM_COLORS[IM_SRC.indexOf(s)]}"></i>${esc(S[s])} ${v[s]}</span>`).join("");
+  const legend = IM_SRC.map((s, j) => `<span><i style="background:${IM_COLORS[j]}"></i>${esc(S[s])}</span>`).join("");
+  const m = d.mine, A = d.all, lr = d.last_run, p1 = m.partners[0];
+  const diff = m.count - m.prev_count;
+  const kpi = [["나의 상호작용", num(m.count), `지난 기간 ${num(m.prev_count)} (${diff >= 0 ? "+" : ""}${num(diff)})`],
+    ["함께한 직원", num(m.partner_count), "명"],
+    ["가장 가까운 직원", p1 ? esc(p1.name) : "-", p1 ? `${p1.total}회 · ${esc(p1.team)}` : ""],
+    ["전체 중 내 순위", m.my_rank ? `${m.my_rank}위` : "-", `활발한 직원 ${num(m.people_count)}명 중`]];
+  const maxT = Math.max(1, ...m.partners.map(p => p.total));
+  const rows = m.partners.map(p => `<tr><td class="r">${p.rank}</td><td class="nowrap">${move(p.rank, p.prev_rank)}</td><td>${who(p.name, p.team)}</td>
+    <td class="imbar"><span style="width:${Math.max(4, p.total / maxT * 100)}%"></span><b>${p.total}</b></td><td>${by(p.by)}</td>
+    <td class="r muted">${p.prev || ""}</td><td class="nowrap muted">${md(p.last)}</td></tr>`).join("");
+  const teams = m.teams.map(([t, n]) => `<span class="imsrc" style="color:var(--fg)">${esc(t)} <b>${n}</b></span>`).join("");
+  const pairRows = A.pairs.map(p => `<tr${d.me && (p.a === d.me || p.b === d.me) ? ' class="imme"' : ""}><td class="r">${p.rank}</td><td class="nowrap">${move(p.rank, p.prev_rank)}</td>
+    <td>${who(p.a, p.ta)} <span class="muted">↔</span> ${who(p.b, p.tb)}</td><td class="r"><b>${p.total}</b></td><td>${by(p.by)}</td></tr>`).join("");
+  const pplRows = A.people.map((p, i) => `<tr${p.name === d.me ? ' class="imme"' : ""}><td class="r">${i + 1}</td><td>${who(p.name, p.team)}</td><td class="r"><b>${p.total}</b></td><td class="r">${p.partners}</td></tr>`).join("");
+  let open = false; try { open = localStorage.getItem("hub.im.all") === "1"; } catch (e) {}  // 전체는 보조 — 처음엔 접어 둠
+  return `<div class="psbar">
+      <div class="imseg" role="group" aria-label="기간">${[["day", "일간"], ["week", "주간"], ["month", "월간"]].map(([v, l]) => `<button type="button" class="tab" data-im-period="${v}" aria-pressed="${d.period === v}">${l}</button>`).join("")}</div>
+      <span class="muted">${md(d.range[0])} ~ ${md(d.range[1])}</span><span class="sp"></span>
+      <span class="muted">${d.updated ? `마지막 반영 ${esc(d.updated)}` : "아직 반영 전"}</span>
+      <button class="btn primary" type="button" data-im-refresh="1" title="지난번 이후 새 기록만 읽어 바로 반영합니다">⟳ 실시간 반영</button></div>
+    <p class="status run" id="immsg" hidden></p>
+    ${!d.has_msg_login ? `<p class="note" style="margin:0 0 10px">메신저는 아직 연결 전입니다 — [메신저 로그인] 탭에서 한 번 로그인하면 실시간 반영 때 함께 셉니다.</p>` : ""}
+    ${lr && lr.errors && lr.errors.length ? `<p class="status bad">읽지 못한 곳: ${lr.errors.map(esc).join(" / ")}</p>` : ""}
+    <h3 class="imh">${esc(d.me || "나")} <span class="muted">${esc(d.me_team || "")}</span> · 나와의 관계 <small>${esc(P[d.period])}</small></h3>
+    <div class="ukpi">${kpi.map(([a, b, c]) => `<div class="kpi"><span>${esc(a)}</span><b style="font-size:20px">${b}</b><span>${c}</span></div>`).join("")}</div>
+    <div class="imgrid">
+      <section><h3>나와 가까운 직원 <small>상호작용 많은 순 · 지난 기간 대비 변동</small></h3>
+        ${m.partners.length ? `<div class="tbl"><table><thead><tr><th class="r">순위</th><th>변동</th><th>직원</th><th>횟수</th><th>경로</th><th class="r">지난 기간</th><th>최근</th></tr></thead><tbody>${rows}</tbody></table></div>`
+          : '<p class="empty">이 기간에 나와 주고받은 기록이 없습니다. 기간을 바꾸거나 [실시간 반영]을 눌러 보세요.</p>'}</section>
+      <section><h3>나의 일별 상호작용 <small>최근 30일 · 진하게 = 선택 기간</small></h3>
+        <div class="uchart" style="margin-top:0"><div class="uhead"><span class="ulegend" style="margin-left:0">${legend}</span></div>${imChart(m.series, "mine", "최근 30일 나의 일별 상호작용, 경로별 누적 막대", 520, 300)}</div>
+        ${teams ? `<h3 style="margin-top:14px !important">함께한 팀 <small>상호작용 합계</small></h3><div>${teams}</div>` : ""}
+        <p class="note">${IM_SRC.filter(s => m.totals[s]).map(s => `${esc(S[s])} ${num(m.totals[s])}`).join(" · ") || ""}</p></section>
+    </div>
+    <details class="imall"${open ? " open" : ""}><summary>전체 직원 보기 <span class="muted">· ${esc(P[d.period])} 상호작용 ${num(A.count)} · 직원 쌍 ${num(A.pair_count)}</span></summary>
+      <div class="imgrid sub">
+        <section><h3>친밀도 순위 (직원 쌍) <small>나와 관련된 쌍은 강조</small></h3>
+          ${A.pairs.length ? `<div class="tbl"><table><thead><tr><th class="r">순위</th><th>변동</th><th>직원</th><th class="r">횟수</th><th>경로</th></tr></thead><tbody>${pairRows}</tbody></table></div>` : '<p class="empty">없음</p>'}</section>
+        <section><h3>활발한 직원 <small>합계 · 연결된 직원 수</small></h3>
+          ${A.people.length ? `<div class="tbl"><table><thead><tr><th class="r">#</th><th>직원</th><th class="r">합계</th><th class="r">연결</th></tr></thead><tbody>${pplRows}</tbody></table></div>` : '<p class="empty">없음</p>'}</section>
+      </div></details>
+    <p class="note">세는 방법: 메일 보낸 사람↔받는/참조(15명 넘는 공지·자동 알림 제외) · 메신저 대화 주고받음, @태그, 본문 속 이름(같은 방 참여자는 '효준님'처럼 이름 일부도) · Jira 댓글↔담당·보고·직전 댓글·멘션 · 위키 작성↔멘션·원글 작성자 · 구글시트 댓글 멘션·답글. 내용은 저장하지 않고 횟수만 이 PC에 남습니다.</p>`;
+}
+function bindIntimacy() {
+  if (im && im.period !== imOpt.period) { setTimeout(() => imCall("board")); return; }  // 지난번에 고른 기간으로
+  const all = $("result").querySelector("details.imall");
+  // 직접 펼치거나 접을 때만 기억 (처음 그릴 때 생기는 toggle 이벤트는 무시)
+  if (all) all.querySelector("summary").addEventListener("click", () => setTimeout(() => { try { localStorage.setItem("hub.im.all", all.open ? "1" : "0"); } catch (e) {} }));
+  $("result").querySelectorAll(".uplot").forEach(plot => {
+    const tip = plot.querySelector(".imtip");
+    if (!tip || !im) return;
+    plot.addEventListener("mousemove", e => {
+      const g = e.target.closest(".ub");
+      plot.querySelectorAll(".ub.on").forEach(x => x !== g && x.classList.remove("on"));
+      if (!g) { tip.hidden = true; return; }
+      g.classList.add("on");
+      const x = im.mine.series[+g.dataset.i], t = IM_SRC.reduce((a, s) => a + (x[s] || 0), 0);
+      tip.innerHTML = `<b>${x.day}</b>${IM_SRC.map((s, j) => `<div><i style="background:${IM_COLORS[j]}"></i>${esc(im.sources[s])}<span>${num(x[s] || 0)}</span></div>`).join("")}<div class="sum">합계<span>${num(t)}</span></div>`;
+      tip.hidden = false;
+      const r = plot.getBoundingClientRect(), w = tip.offsetWidth;
+      let left = e.clientX - r.left + 14;
+      if (left + w > r.width) left = e.clientX - r.left - w - 14;
+      tip.style.left = Math.max(0, left) + "px"; tip.style.top = Math.max(0, e.clientY - r.top - 20) + "px";
+    });
+    plot.addEventListener("mouseleave", () => { tip.hidden = true; plot.querySelectorAll(".ub.on").forEach(x => x.classList.remove("on")); });
+  });
+}
+async function imCall(act, extra) {
+  if (busy || imBusy) return;
+  const m = $("immsg"), t0 = Date.now();
+  imBusy = busy = act === "refresh";
+  let tick;
+  if (act === "refresh" && m) { m.hidden = false; tick = setInterval(() => m.textContent = `반영 중… ${Math.round((Date.now() - t0) / 1000)}초 (메일·메신저가 많으면 몇 분 걸립니다)`, 1000); }
+  const srcs = ["메일", "Jira", "위키", "구글시트", ...(im && im.has_msg_login ? ["메신저"] : [])];
+  const r = await api("/api/run", { bot: "intimacy", action: act, params: { ...imOpt, ...(act === "refresh" ? { sources: srcs } : {}), ...(extra || {}) } }).catch(() => ({ ok: false, text: "서버 연결 실패" }));
+  clearInterval(tick); imBusy = false; if (act === "refresh") busy = false;
+  if (r.ok && r.view === "intimacy") { showResult(r); if (act === "refresh") { loadHistory(); const m2 = $("immsg"); if (m2) { m2.hidden = false; m2.className = "status ok"; m2.textContent = r.summary || "반영 완료"; } } }
+  else if (m) { m.hidden = false; m.className = "status bad"; m.textContent = r.text || "오류"; }
+}
+$("result").addEventListener("click", e => {
+  const b = e.target.closest("[data-im-period],[data-im-refresh]");
+  if (!b || !im) return;
+  if (b.dataset.imRefresh) { b.disabled = true; imCall("refresh"); return; }
+  if (b.dataset.imPeriod) imOpt.period = b.dataset.imPeriod;
+  try { localStorage.setItem("hub.im", JSON.stringify(imOpt)); } catch (err) {}
+  imCall("board");
+});
 
 // Jira 미리보기: 체크 해제한 항목은 만들지 않음
 let plan = null;
@@ -1124,6 +1315,95 @@ $("psdlg").addEventListener("submit", async e => {
     m.textContent = (r && r.text) || "저장하지 못했습니다";
   }
 });
+
+// 회의록 작성봇: 작업 목록(진행률 자동 새로 고침) → 미리보기 · 수정 요청 · 위키 게시
+let mdoc = null, minPoll = null;
+const MIN_ST = { queued: "have", transcribing: "sim", drafting: "sim", ready: "new", published: "made", error: "bad" };
+const minDur = s => s ? (s >= 3600 ? `${Math.floor(s / 3600)}시간 ${Math.round(s % 3600 / 60)}분` : `${Math.max(1, Math.round(s / 60))}분`) : "";
+function renderMinList(d) {
+  const js = d.jobs || [];
+  if (!js.length) return '<p class="empty">아직 만든 회의록이 없습니다. [회의록 만들기] 탭에서 음성 파일을 첨부하세요.</p>';
+  const run = j => ["queued", "transcribing", "drafting"].includes(j.status);
+  return `<div class="tbl"><table><thead><tr><th>만든 시각</th><th>회의</th><th>상태</th><th></th></tr></thead><tbody>${js.map(j => `<tr>
+    <td class="nowrap">${esc(j.created)}</td>
+    <td><b>${esc(j.page_title || j.title || j.file)}</b><div class="note" style="margin:0">${esc(j.file)} · ${esc(j.date)}${j.duration ? " · 음성 " + minDur(j.duration) : ""}</div></td>
+    <td style="min-width:220px"><span class="pill ${MIN_ST[j.status] || "have"}">${esc(j.status_label)}</span>
+      ${run(j) ? `<div style="background:var(--line);border-radius:4px;height:6px;margin:6px 0 2px"><div style="background:var(--accent);height:6px;border-radius:4px;width:${j.status === "drafting" ? 100 : j.progress || 0}%"></div></div>` : ""}
+      ${j.message ? `<div class="note" style="margin:0">${esc(j.message)}</div>` : ""}
+      ${j.stale ? '<div class="note" style="margin:0;color:#C2412D">한동안 진행이 없습니다 (PC가 꺼졌거나 중단됨) — [다시 시작]을 눌러 주세요</div>' : ""}
+      ${j.published ? `<div><a href="${esc(j.published.url)}" target="_blank" rel="noopener">위키에서 보기</a></div>` : ""}</td>
+    <td class="nowrap">${j.versions && j.versions.length ? `<button class="btn" type="button" data-min-open="${esc(j.id)}">열기</button> ` : ""}
+      ${j.status === "error" || j.stale ? `<button class="btn" type="button" data-min-retry="${esc(j.id)}">다시 시작</button> ` : ""}
+      ${run(j) && !j.stale ? "" : `<button class="btn" type="button" data-min-del="${esc(j.id)}">삭제</button>`}</td></tr>`).join("")}</tbody></table></div>
+    <p class="note">음성 인식은 PC 안에서만 처리하며 1시간 회의에 40~90분쯤 걸립니다. 이 화면은 진행 중일 때 자동으로 새로 고칩니다. 화면이나 IoT업무봇 창을 닫아도 작업은 계속됩니다.</p>`;
+}
+function pollMinutes(d) {
+  clearTimeout(minPoll);
+  if (!(d.jobs || []).some(j => ["queued", "transcribing", "drafting"].includes(j.status) && !j.stale)) return;
+  const me = bot && bot.id;
+  minPoll = setTimeout(async () => {
+    if (!bot || bot.id !== me || busy) return;
+    const r = await api("/api/run", { bot: me, action: "jobs", params: {} }).catch(() => null);
+    if (r && r.ok && bot && bot.id === me && !busy && (action.id === "jobs" || action.id === "start")) showResult(r);
+  }, 5000);
+}
+function renderMinDoc(d) {
+  if (!d || !d.job) return "";
+  mdoc = d;
+  const j = d.job, vs = j.versions || [], cur = vs.find(x => x.v === d.v) || vs[vs.length - 1], pub = j.published;
+  const info = [`파일 <b>${esc(j.file)}</b>`, `회의 날짜 <b>${esc(j.date)}</b>`, j.duration ? `음성 ${minDur(j.duration)} (인식 ${minDur(j.stt_sec)})` : (j.kind === "text" ? "녹취록 파일" : ""),
+    j.chars ? `녹취록 ${j.chars.toLocaleString("ko-KR")}자` : "", cur && cur.sec ? `정리 ${minDur(cur.sec)}` : ""].filter(Boolean);
+  if (!vs.length) return `<div class="planmeta">${info.map(x => `<span>${x}</span>`).join("")}</div><p class="status run">${esc(j.message || "작성 중입니다")}</p>`;
+  return `<div class="planmeta">${info.map(x => `<span>${x}</span>`).join("")}
+      <span>버전 <select data-min-ver>${vs.map(x => `<option value="${x.v}"${x.v === d.v ? " selected" : ""}>v${x.v} · ${esc(x.at.slice(5))}${x.feedback ? " (수정)" : ""}</option>`).join("")}</select></span></div>
+    ${cur && cur.error ? `<p class="status bad">${esc(cur.error)} — 이 버전은 게시할 수 없습니다. 아래 수정 요청으로 다시 만들어 주세요.</p>` : ""}
+    ${pub ? `<p class="status ok">${esc(pub.how)} · '${esc(pub.parent_title)}' 아래 (${esc(pub.at)}, v${pub.v}) — <a href="${esc(pub.url)}" target="_blank" rel="noopener">위키에서 보기</a></p>` : ""}
+    <div class="uxbox"><b>위키 게시</b>
+      <div class="row" style="margin-top:6px"><label for="min_title">페이지 제목</label><input type="text" id="min_title" value="${esc(j.page_title || "")}"></div>
+      <div class="row"><label for="min_parent">올릴 위치 (상위 위키 페이지 주소)</label><input type="text" id="min_parent" value="${esc(j.parent || "")}" placeholder="https://wiki.coway.com/pages/viewpage.action?pageId=…"></div>
+      <div class="actions"><button class="btn danger" type="button" data-min-pub${cur && cur.error ? " disabled" : ""}>${pub ? "위키에 다시 게시" : "위키에 게시"}</button>
+        <span class="note" style="margin:0">마지막 버전(v${vs.length})을 올립니다. 같은 제목이 있으면 그 페이지를 새 버전으로 갱신합니다.</span></div></div>
+    <iframe class="specview" sandbox="allow-popups allow-popups-to-escape-sandbox" srcdoc="${esc(d.html)}" title="회의록 미리보기"></iframe>
+    <div class="uxbox"><b>수정 요청</b> <span class="note">고칠 점을 적으면 새 버전(v${vs.length + 1})을 만듭니다 (1~5분)</span>
+      <textarea id="minfb" placeholder="예) 담당자 '김보라님' 추가, 2-2 안건은 결정 사항으로 옮기기, 액션 아이템 기한 11/14(금)로"></textarea>
+      <div class="actions" style="margin-top:8px"><button class="btn primary" type="button" data-min-revise>회의록 수정</button><span id="minst"></span></div></div>
+    ${d.transcript ? `<details><summary>녹취록 원문 (음성 자동 인식 — 오타가 있을 수 있음)</summary><pre class="out" style="max-height:420px;overflow:auto;white-space:pre-wrap">${esc(d.transcript)}</pre></details>` : ""}`;
+}
+$("result").addEventListener("change", async e => {
+  const s = e.target.closest("[data-min-ver]");
+  if (!s || busy || !mdoc) return;
+  const r = await api("/api/run", { bot: bot.id, action: "open", params: { id: mdoc.job.id, v: +s.value } }).catch(() => null);
+  if (r) showResult(r);
+});
+$("result").addEventListener("click", async e => {
+  const t = e.target.closest("[data-min-open],[data-min-retry],[data-min-del],[data-min-pub],[data-min-revise]");
+  if (!t || busy) return;
+  let act, params;
+  if (t.dataset.minOpen) { act = "open"; params = { id: t.dataset.minOpen }; }
+  else if (t.dataset.minRetry) { act = "retry"; params = { id: t.dataset.minRetry }; }
+  else if (t.dataset.minDel) { if (!confirm("이 회의록 작업을 삭제할까요? (음성·녹취록·초안이 모두 지워지고, 위키에 올린 페이지는 그대로 둡니다)")) return; act = "delete"; params = { id: t.dataset.minDel }; }
+  else if (t.hasAttribute("data-min-pub")) {
+    const title = $("min_title").value.trim(), parent = $("min_parent").value.trim();
+    if (!parent) { $("min_parent").focus(); return; }
+    if (!confirm(`'${title}' 을(를) 위키에 게시합니다.\n올릴 위치: ${parent}\n같은 제목 페이지가 있으면 새 버전으로 갱신합니다.\n\n계속할까요?`)) return;
+    act = "publish"; params = { id: mdoc.job.id, title, parent };
+  } else {
+    const fb = $("minfb").value.trim();
+    if (!fb) { $("minfb").focus(); return; }
+    act = "revise"; params = { id: mdoc.job.id, feedback: fb };
+    const st = $("minst"); if (st) { st.className = "status run"; st.textContent = "수정하는 중… (1~5분)"; }
+  }
+  busy = true; t.disabled = true;
+  const res = await api("/api/run", { bot: bot.id, action: act, params }).catch(() => ({ ok: false, text: "서버 연결 실패" }));
+  busy = false;
+  if (!res.ok && (act === "revise" || act === "publish")) { t.disabled = false; alertMin(res.text, act); return; }
+  showResult(res); loadHistory();
+});
+function alertMin(msg, act) {
+  const box = act === "revise" ? $("minst") : null;
+  if (box) { box.className = "status bad"; box.textContent = msg || "오류"; }
+  else $("result").insertAdjacentHTML("afterbegin", `<p class="status bad">${esc(msg || "오류")}</p>`);
+}
 
 // Figma UX 기획봇: 설계안 확인 → 수정 요청(새 버전) → Figma에 그리기
 let ux = null;

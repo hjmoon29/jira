@@ -1,0 +1,52 @@
+{
+  "name": "회의록 작성봇",
+  "icon": "🎙️",
+  "order": 6,
+  "group": "내 업무",
+  "tagline": "회의 음성으로 회의록 작성 → 위키 게시",
+  "description": "회의 녹음 파일을 첨부하면 PC 안에서 음성을 글자로 바꾸고(음성은 회사 밖으로 나가지 않음), Claude가 목적·논의 내용·결정 사항·액션 아이템으로 회의록을 정리합니다. 미리보기를 보고 수정 요청을 한 뒤 [위키에 게시]를 누르면 지정한 위키 페이지의 하위 문서로 올립니다. 음성 인식은 1시간 회의 기준 40~90분쯤 걸리며 백그라운드에서 진행됩니다.",
+  "actions": [
+    {
+      "id": "start",
+      "label": "회의록 만들기",
+      "button": "회의록 만들기",
+      "timeout": 300,
+      "init_action": "init",
+      "fields": [
+        {"name": "audio", "label": "회의 음성 파일", "type": "file", "required": true,
+         "accept": ".m4a,.mp3,.wav,.webm,.mp4,.aac,.ogg,.flac,.wma,.amr,.3gp,.mov,.mkv,.txt,.vtt,.srt",
+         "help": "휴대폰 녹음(m4a)·mp3·wav·회의 녹화(mp4) 등. 이미 글자로 된 녹취록(txt·vtt·srt)을 넣으면 음성 인식을 건너뜁니다."},
+        {"name": "title", "label": "회의명 (비우면 내용으로 정함)", "type": "text", "placeholder": "말련향 엘리트 빌트인 킥오프"},
+        {"name": "date", "label": "회의 날짜", "type": "date", "default": "today"},
+        {"name": "place", "label": "장소 (선택)", "type": "text", "placeholder": "G타워 13층 회의실 / Google Meet"},
+        {"name": "attendees", "label": "참석자 (선택, 쉼표로)", "type": "text", "placeholder": "최린아, 문효준, 이경희(Water상품기획팀)",
+         "help": "이름을 적어 두면 잘못 들린 이름을 바로잡고 발언자·담당자를 더 정확히 찾습니다."},
+        {"name": "notes", "label": "안건·메모 (선택)", "type": "textarea", "placeholder": "예) 안건 1. IoT 기능 범위 2. 출시 일정 / 정리할 때 법인 요구사항 위주로"},
+        {"name": "parent", "label": "올릴 위치: 상위 위키 페이지 주소 (게시할 때 바꿔도 됨)", "type": "text",
+         "placeholder": "https://wiki.coway.com/pages/viewpage.action?pageId=…", "help": "마지막으로 게시한 위치가 기본으로 들어갑니다."},
+        {"name": "transcript_in_wiki", "label": "위키에 녹취록 원문도 접어서 넣기", "type": "checkbox", "default": false}
+      ]
+    },
+    {"id": "jobs", "label": "회의록 목록", "auto": true, "timeout": 30, "fields": []},
+    {
+      "id": "settings",
+      "label": "설정",
+      "button": "저장",
+      "timeout": 30,
+      "init_action": "settings_init",
+      "fields": [
+        {"name": "parent", "label": "기본 올릴 위치 (상위 위키 페이지 주소)", "type": "text", "placeholder": "https://wiki.coway.com/pages/viewpage.action?pageId=…"},
+        {"name": "glossary", "label": "자주 나오는 용어·이름 (음성 인식·정리에 참고)", "type": "textarea",
+         "placeholder": "예) 아이콘 프로, 엘리트 빌트인, 슬립싱크, 파이어쉴드, LPP, DR3, CFT, 이경희, 서정우",
+         "help": "제품명·약어·사람 이름을 적어 두면 잘못 들리는 일이 줄어듭니다."}
+      ]
+    },
+    {"id": "init", "label": "기본값", "hidden": true, "timeout": 30},
+    {"id": "settings_init", "label": "설정 불러오기", "hidden": true, "timeout": 30},
+    {"id": "open", "label": "회의록 열기", "hidden": true, "timeout": 30},
+    {"id": "revise", "label": "회의록 수정", "hidden": true, "timeout": 1800},
+    {"id": "publish", "label": "위키 게시", "hidden": true, "timeout": 120},
+    {"id": "retry", "label": "다시 시작", "hidden": true, "timeout": 30},
+    {"id": "delete", "label": "삭제", "hidden": true, "timeout": 30}
+  ]
+}

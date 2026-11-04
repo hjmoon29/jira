@@ -120,6 +120,8 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if not self.guard(True):
             return
+        if self.path == "/api/upload":
+            return self.upload()
         if self.path != "/api/run":
             return self.send(404, {"ok": False, "text": "없는 경로"})
         try:
@@ -127,6 +129,44 @@ class Handler(BaseHTTPRequestHandler):
         except ValueError:
             return self.send(400, {"ok": False, "text": "요청 형식 오류"})
         self.send(200, run(req.get("bot", ""), req.get("action", ""), req.get("params") or {}))
+
+
+UPLOAD_MAX = 4 * 1024 ** 3  # 4GB (긴 회의 녹화 파일 고려)
+
+
+def _upload(self):
+    """파일 첨부: 본문을 그대로 runs/uploads/ 에 저장하고 경로를 돌려준다 (봇은 이 경로를 입력값으로 받는다)"""
+    import re, urllib.parse
+    n = int(self.headers.get("Content-Length") or 0)
+    if not n or n > UPLOAD_MAX:
+        return self.send(400, {"ok": False, "text": "파일이 비었거나 너무 큽니다 (최대 4GB)"})
+    name = urllib.parse.unquote(self.headers.get("X-File-Name") or "file")
+    name = re.sub(r'[\\/:*?"<>|\x00-\x1f]', "_", os.path.basename(name.replace("\\", "/")))[-120:] or "file"
+    up = os.path.join(RUNS, "uploads")
+    os.makedirs(up, exist_ok=True)
+    for f in os.listdir(up):  # 하루 지난 첨부는 정리 (봇이 가져간 파일은 이미 옮겨져 없음)
+        fp = os.path.join(up, f)
+        if time.time() - os.path.getmtime(fp) > 86400:
+            try:
+                os.remove(fp)
+            except OSError:
+                pass
+    path = os.path.join(up, time.strftime("%Y%m%d-%H%M%S_") + name)
+    left = n
+    with open(path, "wb") as f:
+        while left:
+            chunk = self.rfile.read(min(left, 1 << 20))
+            if not chunk:
+                break
+            f.write(chunk)
+            left -= len(chunk)
+    if left:
+        os.remove(path)
+        return self.send(400, {"ok": False, "text": "파일 전송이 중간에 끊겼습니다"})
+    self.send(200, {"ok": True, "path": path, "name": name, "size": n})
+
+
+Handler.upload = _upload
 
 
 def main():
