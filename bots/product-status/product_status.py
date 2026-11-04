@@ -5,11 +5,46 @@
 - 데이터(내가 입력한 값): runs/product-status/products.json — 화면에서 직접 입력·수정
 - Jira 연동(선택): 내가 담당인 '큰틀' 에픽을 제품으로 불러오기, 에픽 하위 문서 상태로 빈칸 채우기
 """
-import datetime, json, os, re, sys, time, uuid
+import datetime, glob, json, os, re, shutil, sys, time, uuid
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RUNS = os.environ.get("BOT_HUB_RUNS") or os.path.join(HERE, "..", "..", "runs")
-DATA_DIR = os.path.join(RUNS, "product-status")
+LOCAL_DIR = os.path.join(RUNS, "product-status")
+DRIVE_SUB = os.path.join("IoT업무봇", "product-status")
+
+
+def _drive_root():
+    """PC 의 Google Drive '내 드라이브' 폴더 (Windows G:, Mac CloudStorage). 없으면 None"""
+    env = os.environ.get("WORKBOT_DRIVE")
+    if env:
+        return env if os.path.isdir(env) else None
+    cands = []
+    for letter in "GHIJ":
+        cands += [f"{letter}:/내 드라이브", f"{letter}:/My Drive"]
+    home = os.path.expanduser("~")
+    for base in sorted(glob.glob(os.path.join(home, "Library", "CloudStorage", "GoogleDrive-*"))):
+        cands += [os.path.join(base, "내 드라이브"), os.path.join(base, "My Drive")]
+    cands += [os.path.join(home, "Google Drive", "내 드라이브"), os.path.join(home, "Google Drive", "My Drive")]
+    return next((c for c in cands if os.path.isdir(c)), None)
+
+
+def _data_dir():
+    """Drive 가 있으면 Drive 공유 폴더(두 PC 가 같은 데이터), 없으면 PC 로컬 runs/"""
+    root = _drive_root()
+    if not root:
+        return LOCAL_DIR
+    d = os.path.join(root, DRIVE_SUB)
+    try:
+        os.makedirs(d, exist_ok=True)
+        dst, src = os.path.join(d, "products.json"), os.path.join(LOCAL_DIR, "products.json")
+        if not os.path.exists(dst) and os.path.isfile(src):
+            shutil.copy2(src, dst)  # 첫 실행: 이 PC 의 기존 데이터를 Drive 로 옮김
+        return d
+    except OSError:
+        return LOCAL_DIR
+
+
+DATA_DIR = _data_dir()
 DATA = os.path.join(DATA_DIR, "products.json")
 CONFIG = os.path.join(HERE, "config.json")
 JIRA_DIR = os.path.join(HERE, "..", "jira-tasks")
