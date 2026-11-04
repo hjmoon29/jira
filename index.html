@@ -335,6 +335,24 @@ aside { top: var(--topbar); height: calc(100vh - var(--topbar)); padding: 20px 1
 .head h1 .ic svg { width: 20px; height: 20px; }
 .addbot { border-top: 1px dashed var(--line); }
 
+/* 촘촘한 한 줄 메뉴(A안): 노트북 화면에서도 스크롤 없이 — 줄 34px·작은 아이콘·설명 줄 없음(설명은 본문 제목 아래), 묶음 접기 없음 */
+aside { padding: 12px 10px; gap: 0; }
+.grp { gap: 0; }
+.grp + .grp { margin-top: 10px; padding-top: 0; border-top: 0; }
+.grp h3 { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: .02em; padding: 0 10px 2px; }
+.bot, .bot:not([aria-current="true"]) { grid-template-columns: 24px 1fr; gap: 10px; height: 34px; padding: 0 10px 0 7px; }
+.bot b { font-size: 13.5px; font-weight: 600; }
+.bot > span:last-child > span { display: none; }
+.bot .ic { width: 24px; height: 24px; border-radius: 6px; font-size: 13px; }
+.bot .ic svg { width: 15px; height: 15px; }
+#botsys { padding-top: 8px; }
+#botsys .bot b { font-weight: 500; color: var(--muted); }
+#botsys .bot[aria-current="true"] b { color: var(--brand-2); }
+.addbot { display: none; }  /* 봇 추가 방법은 README.md 에 */
+.app.mini .bot { grid-template-columns: 1fr; height: 38px; padding: 0; }
+.app.mini .bot .ic { width: 30px; height: 30px; }
+.app.mini .grp + .grp { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line); }
+
 /* 본문 */
 main { padding: 22px clamp(16px, 3vw, 36px) 48px; gap: 16px; }
 .crumb { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
@@ -428,9 +446,6 @@ const icon = b => ICON_PATHS[b.id]
   ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON_PATHS[b.id]}</svg>`
   : esc(b.icon || "🤖");
 
-// 접은 묶음 (브라우저에 기억). 지금 선택한 메뉴가 들어 있는 묶음은 항상 펼친다
-let closedGroups = [];
-try { closedGroups = JSON.parse(localStorage.getItem("hub.closed") || "[]"); } catch (e) {}
 function renderBots() {
   const tip = b => b.tagline || (b.actions || []).filter(a => !a.hidden).map(a => a.label).join(" · ");
   const btn = b => `<button class="bot" data-id="${esc(b.id)}" aria-current="${bot && bot.id === b.id}" title="${esc(b.name + " — " + tip(b))}" aria-label="${esc(b.name)}">
@@ -439,9 +454,8 @@ function renderBots() {
   const groups = new Map();
   bots.filter(b => b.group !== "system").forEach(b => { const g = b.group || "기타"; groups.has(g) || groups.set(g, []); groups.get(g).push(b); });
   $("bots").innerHTML = [...groups].map(([g, list]) => {
-    const closed = closedGroups.includes(g) && !list.some(b => bot && b.id === bot.id);
-    return `<div class="grp${closed ? " closed" : ""}" role="group" aria-label="${esc(g)}">
-      <h3><button type="button" data-grp="${esc(g)}" aria-expanded="${!closed}"><span class="chev">▼</span>${esc(g)}<span class="cnt">${list.length}</span></button></h3>${list.map(btn).join("")}</div>`;
+    return `<div class="grp" role="group" aria-label="${esc(g)}">
+      <h3>${esc(g)}</h3>${list.map(btn).join("")}</div>`;
   }).join("");
   $("botsys").innerHTML = bots.filter(b => b.group === "system").map(btn).join("");
 }
@@ -1574,15 +1588,6 @@ document.addEventListener("keydown", e => {
   if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "b" && !(e.target.closest && e.target.closest("input,textarea,select,[contenteditable]"))) {
     e.preventDefault(); setNav(!document.querySelector(".app").classList.contains("mini"));
   }
-});
-$("bots").addEventListener("click", e => {
-  const g = e.target.closest("[data-grp]");
-  if (!g) return;
-  const name = g.dataset.grp, box = g.closest(".grp");
-  if (box.querySelector('.bot[aria-current="true"]')) return;  // 지금 보고 있는 메뉴의 묶음은 접지 않는다
-  closedGroups = box.classList.toggle("closed") ? [...new Set([...closedGroups, name])] : closedGroups.filter(x => x !== name);
-  g.setAttribute("aria-expanded", !box.classList.contains("closed"));
-  try { localStorage.setItem("hub.closed", JSON.stringify(closedGroups)); } catch (e) {}
 });
 $("tabs").addEventListener("click", e => { const t = e.target.closest(".tab"); if (t) selectBot(bot.id, t.dataset.a); });
 
