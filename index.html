@@ -3,12 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>업무 봇</title>
+<title>IoT업무봇(Beta)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
 :root {
   --bg: #F4F5F7; --panel: #FFFFFF; --fg: #1B1F24; --muted: #616A75; --line: #DDE1E6; --chip: #ECEFF3;
   --accent: #2F5BD3; --accent-soft: #E3EAFB; --ok: #1F8A4C; --ok-soft: #E1F3E8; --bad: #C2412D; --bad-soft: #FBE6E2;
   --warn: #A86B00; --warn-soft: #FDF1D8;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
   --sans: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, monospace;
   color-scheme: light;
@@ -18,6 +20,7 @@
     --bg: #111418; --panel: #1A1E24; --fg: #E6E9ED; --muted: #98A2AE; --line: #2C323A; --chip: #242A31;
     --accent: #7FA2F5; --accent-soft: #1E2A44; --ok: #5BC98A; --ok-soft: #173325; --bad: #F08A73; --bad-soft: #3A221D;
     --warn: #E8B24F; --warn-soft: #3A2E15; color-scheme: dark;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
   }
 }
 * { box-sizing: border-box; }
@@ -40,9 +43,20 @@ aside { background: var(--panel); border-right: 1px solid var(--line); padding: 
 .bot b, .bot span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bot b { display: block; font-size: 14px; }
 .bot span { display: block; font-size: 12px; color: var(--muted); line-height: 1.4; margin-top: 1px; }
-.grp { display: flex; flex-direction: column; gap: 2px; }
-.grp + .grp { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
-.grp h3 { margin: 0; padding: 0 12px 6px; font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: .04em; }
+/* 한 줄 메뉴: 설명 줄은 선택한 메뉴만 (나머지는 마우스를 올리면 툴팁) */
+.bot:not([aria-current="true"]) > span:last-child > span { display: none; }
+.bot:not([aria-current="true"]) { padding-top: 5px; padding-bottom: 5px; }
+.grp { display: flex; flex-direction: column; gap: 1px; }
+.grp + .grp { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+.grp h3 { margin: 0; font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: .04em; }
+.grp h3 button { display: flex; align-items: center; gap: 6px; width: 100%; border: 0; background: none; padding: 4px 12px; cursor: pointer;
+  font: inherit; color: inherit; letter-spacing: inherit; border-radius: 6px; text-align: left; }
+.grp h3 button:hover { background: var(--chip); }
+.grp h3 .chev { transition: transform .15s; font-size: 9px; }
+.grp.closed h3 .chev { transform: rotate(-90deg); }
+.grp h3 .cnt { margin-left: auto; font-weight: 400; }
+.grp:not(.closed) h3 .cnt { display: none; }
+.grp.closed .bot { display: none; }
 #botsys { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line); }
 #botsys:empty { display: none; }
 .addbot { margin-top: 16px; font-size: 12px; color: var(--muted); padding: 14px 12px 0; border-top: 1px solid var(--line); }
@@ -108,6 +122,10 @@ a { color: var(--accent); }
 .hist div:last-child { border-bottom: 0; }
 .hist time { color: var(--muted); font-variant-numeric: tabular-nums; }
 .hist em { font-style: normal; color: var(--muted); }
+/* 최근 실행: 화면 맨 아래 작게, 목록은 상자 안에서 따로 스크롤 */
+#histcard { margin-top: 28px; }
+#histcard > h2 small { font-weight: 400; color: var(--muted); margin-left: 6px; }
+section.card > div.hist { max-height: 210px; overflow-y: auto; padding-top: 4px; padding-bottom: 4px; overscroll-behavior: contain; }
 .empty { color: var(--muted); font-size: 13px; }
 .help { font-size: 12px; color: var(--muted); line-height: 1.6; }
 .muted { color: var(--muted); font-size: 12px; }
@@ -131,23 +149,216 @@ table.edit details summary { margin-top: 4px; font-size: 12px; }
 .qin { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 6px 8px; font-size: 13px; min-width: 240px; }
 .sched { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .sched select, .sched input[type=date], .sched input[type=time] { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 5px 8px; font-size: 13px; }
+.ukpi { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.ukpi .kpi b { font-size: 20px; }
+.uchart { margin-top: 14px; border: 1px solid var(--line); border-radius: 10px; padding: 14px 14px 6px; }
+.uhead { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; font-size: 13px; }
+.ulegend { margin-left: auto; display: flex; gap: 14px; font-size: 12px; color: var(--muted); }
+.ulegend i, .utip i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.uplot { position: relative; }
+.uplot svg { width: 100%; height: auto; display: block; margin-top: 8px; }
+.ugrid line { stroke: var(--line); stroke-width: 1; }
+.ugrid text, .ux text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.ub .hit { fill: transparent; }
+.ub.on .hit { fill: var(--chip); }
+.utip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+  font-size: 12px; box-shadow: 0 4px 14px rgba(0,0,0,.12); min-width: 190px; z-index: 2; }
+.utip b { display: block; margin-bottom: 4px; }
+.utip div { display: flex; align-items: center; } .utip span { margin-left: auto; padding-left: 14px; font-variant-numeric: tabular-nums; }
+.utip .sum { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 4px; font-weight: 700; }
+td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; }
+dialog.vals { border: 1px solid var(--line); border-radius: 6px; padding: 0; width: min(1080px, 96vw); max-height: 88vh; background: var(--panel); color: var(--fg); }
+dialog.vals::backdrop { background: rgba(10, 20, 35, .45); }
+dialog.vals .dh { padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--chip); }
+dialog.vals .dh b { font-size: 15px; } dialog.vals .dh p { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+dialog.vals .db { padding: 14px 20px; overflow: auto; max-height: calc(88vh - 140px); }
+dialog.vals .df { padding: 12px 20px; border-top: 1px solid var(--line); display: flex; gap: 8px; align-items: center; }
+dialog.vals table.edit input, dialog.vals table.edit select { min-width: 90px; }
+dialog.vals .bulk { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; font-size: 13px; }
+dialog.vals[open] { display: flex; flex-direction: column; overflow: hidden; }
+dialog.vals .db { flex: 1; min-height: 0; }
+dialog.vals .bulk input, dialog.vals .bulk select { width: auto; border: 1px solid var(--line); background: var(--panel); border-radius: 4px; padding: 5px 8px; font-size: 13px; }
+.uxgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-top: 12px; }
+.uxs { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--bg); min-width: 0; }
+.uxs h4 { margin: 0 0 4px; font-size: 15px; }
+.uxs h5 { margin: 10px 0 2px; font-size: 12px; color: var(--muted); font-weight: 600; }
+.uxs ol, .uxs ul { margin: 0; padding-left: 18px; font-size: 13px; }
+.uxbox { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-top: 12px; font-size: 13px; }
+.uxbox ul { margin: 4px 0 0; padding-left: 18px; }
+/* 왼쪽 메뉴 접기: 아이콘만 남는 좁은 메뉴 + 본문 넓게 (휴대폰 폭에서는 메뉴를 아예 숨김) */
+/* 접기 버튼: 왼쪽 메뉴 오른쪽 경계선의 세로 가운데에 걸친 탭 */
+.navtoggle { position: fixed; z-index: 9; left: calc(280px - 12px); top: calc(var(--topbar) + (100vh - var(--topbar)) / 2 - 24px);
+  width: 24px; height: 48px; padding: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--muted);
+  display: grid; place-items: center; cursor: pointer; box-shadow: 0 2px 8px rgba(15, 30, 60, .12); transition: left .18s, color .15s, border-color .15s; }
+.navtoggle:hover, .navtoggle:focus-visible { color: #fff; background: var(--brand-2); border-color: var(--brand-2); }
+.navtoggle svg { width: 14px; height: 14px; transition: transform .18s; }
+body.navmini .navtoggle { left: calc(64px - 12px); }
+body.navmini .navtoggle svg { transform: rotate(180deg); }
+@media (max-width: 760px) { .navtoggle { display: none; } }
+.app, aside { transition: grid-template-columns .18s, padding .18s; }
+.app.mini { grid-template-columns: 64px minmax(0, 1fr); }
+.app.mini aside { padding: 14px 8px; overflow-x: hidden; }
+.app.mini .grp h3, .app.mini .addbot { display: none; }
+.app.mini .grp + .grp { margin-top: 4px; padding-top: 4px; }
+.app.mini .grp.closed .bot { display: grid; }
+.app.mini .bot { grid-template-columns: 1fr; justify-items: center; padding: 6px 0; border-left-width: 0; }
+.app.mini .bot > span:last-child { display: none; }
+.app.mini main { max-width: none; }
+@media (max-width: 760px) { .app.mini { grid-template-columns: minmax(0, 1fr); } .app.mini aside { display: none; } }
+/* 제품별 진행상황 */
+main:has(.psmx) { max-width: none; }
+.psbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.psbar .sp { flex: 1; }
+.pslegend { display: flex; flex-wrap: wrap; gap: 6px 10px; font-size: 12px; color: var(--muted); margin: 0 0 10px; align-items: center; }
+.psmx { overflow: auto; max-height: 72vh; border: 1px solid var(--line); border-radius: 4px; }
+.psmx table { border-collapse: separate; border-spacing: 0; font-size: 12.5px; width: max-content; min-width: 100%; }
+.psmx th, .psmx td { border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); padding: 6px 6px; vertical-align: middle; background: var(--panel); }
+.psmx thead th { position: sticky; top: 0; z-index: 2; background: var(--chip); color: var(--fg); font-weight: 600; text-align: center; font-size: 12px; white-space: nowrap; }
+.psmx thead tr:nth-child(2) th { top: 29px; font-weight: 500; white-space: normal; min-width: 78px; max-width: 104px; line-height: 1.35; vertical-align: bottom; }
+.psmx thead th small { display: block; color: var(--muted); font-size: 10.5px; font-weight: 400; }
+.psmx thead tr:first-child th { height: 29px; color: var(--brand-2); }
+.psmx th.pname, .psmx td.pname { position: sticky; left: 0; z-index: 1; min-width: 210px; max-width: 260px; text-align: left; }
+.psmx thead th.pname { z-index: 3; }
+.psmx td.pname b { display: block; font-size: 13px; padding-right: 78px; }
+.psmx td.pname { position: sticky; }
+.psmx td.pname .pact { opacity: .35; } .psmx tr:hover td.pname .pact, .psmx td.pname .pact:focus-within { opacity: 1; }
+.psmx td.pname .muted { display: block; }
+.psmx td.pname .pact { display: flex; gap: 2px; margin-top: 4px; align-items: center; }
+.psmx td.pname .pact .ibtn { width: 24px; height: 24px; font-size: 11px; margin: 0; }
+.psmx tr.pdone td { opacity: .55; }
+.pcell { display: grid; place-items: center; gap: 2px; width: 100%; min-width: 74px; min-height: 40px; border: 1px dashed transparent; background: none; border-radius: 4px; cursor: pointer; padding: 2px; }
+.pcell:hover { border-color: var(--brand-2); background: var(--sky); }
+.pcell small { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pcell .dot { font-size: 10px; color: var(--muted); }
+.pill.st-진행중 { background: var(--accent-soft); color: var(--accent); }
+.pill.st-완료 { background: var(--ok-soft); color: var(--ok); }
+.pill.st-예정 { background: var(--chip); color: var(--fg); }
+.pill.st-보류 { background: var(--warn-soft); color: var(--warn); }
+.pill.st-해당없음 { background: transparent; color: var(--muted); border: 1px dashed var(--line); }
+.pill.st-미착수 { background: transparent; color: var(--muted); }
+.pprog { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); margin-top: 3px; }
+.pprog .gauge { width: 70px; height: 5px; }
+dialog.ps { border: 1px solid var(--line); border-radius: 6px; padding: 0; width: min(520px, 94vw); background: var(--panel); color: var(--fg); }
+dialog.ps::backdrop { background: rgba(10, 20, 35, .45); }
+dialog.ps .dh { padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--chip); }
+dialog.ps .dh b { font-size: 15px; } dialog.ps .dh p { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+dialog.ps .db { padding: 16px 20px; display: grid; gap: 12px; }
+dialog.ps .df { padding: 12px 20px; border-top: 1px solid var(--line); display: flex; gap: 8px; align-items: center; }
+dialog.ps .df .sp { flex: 1; }
+dialog.ps .stbtns { display: flex; flex-wrap: wrap; gap: 6px; }
+dialog.ps .stbtns label { cursor: pointer; }
+dialog.ps .stbtns input { position: absolute; opacity: 0; }
+dialog.ps .stbtns .pill { font-size: 13px; padding: 5px 12px; border: 1px solid var(--line); }
+dialog.ps .stbtns input:checked + .pill { outline: 2px solid var(--brand-2); outline-offset: 1px; font-weight: 700; }
+dialog.ps .stbtns input:focus-visible + .pill { outline: 2px solid var(--accent); }
 .specview { width: 100%; height: 75vh; border: 1px solid var(--line); border-radius: 8px; background: #fff; margin-top: 10px; }
+</style>
+<style id="coway-theme">
+/* 코웨이 브랜드 컨셉: 네이비 상단 바 + 흰 본문, 사내 시스템처럼 각진 카드 */
+:root {
+  --brand: #0B3D91; --brand-deep: #072B66; --brand-2: #1F6FD1; --sky: #EAF2FD; --sky-line: #C9DCF7;
+  --bg: #F2F5F9; --panel: #FFFFFF; --fg: #18202B; --muted: #5D6878; --line: #DCE3EC; --chip: #EEF2F7;
+  --accent: #1F6FD1; --accent-soft: #EAF2FD;
+  --sans: "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --topbar: 56px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --brand: #0E2F66; --brand-deep: #0A2350; --brand-2: #6EA8F5; --sky: #16263F; --sky-line: #27406A;
+    --bg: #0E131A; --panel: #161C25; --fg: #E5EAF1; --muted: #98A3B3; --line: #273140; --chip: #1E2632;
+    --accent: #6EA8F5; --accent-soft: #16263F;
+  }
+}
+body { font-size: 14.5px; }
+
+/* 상단 바 */
+.top { position: sticky; top: 0; z-index: 10; height: var(--topbar); display: flex; align-items: center; gap: 16px;
+  padding: 0 24px; background: linear-gradient(90deg, var(--brand-deep), var(--brand)); color: #fff; }
+.top .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; letter-spacing: -.01em; }
+.top .logo i { width: 28px; height: 28px; border-radius: 6px; background: #fff; color: var(--brand); display: grid; place-items: center;
+  font-style: normal; font-size: 13px; font-weight: 800; }
+.top .logo small { font-weight: 400; font-size: 12px; opacity: .75; margin-left: 4px; }
+.top .limits { margin-left: auto; display: flex; gap: 8px; }
+.lim { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.18);
+  border-radius: 6px; padding: 5px 10px; font-size: 12px; white-space: nowrap; }
+.lim b { font-size: 13px; font-variant-numeric: tabular-nums; }
+.lim .bar { width: 56px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.22); overflow: hidden; }
+.lim .bar i { display: block; height: 100%; background: #7FE0A8; }
+.lim .bar i.warn { background: #FFD166; } .lim .bar i.crit { background: #FF8A7A; }
+@media (max-width: 760px) { .top { padding: 0 16px; } .top .logo small, .lim .bar, .lim .sub { display: none; } }
+
+/* 왼쪽 메뉴 */
+.app { grid-template-columns: 280px minmax(0, 1fr); min-height: calc(100vh - var(--topbar)); }
+aside { top: var(--topbar); height: calc(100vh - var(--topbar)); padding: 20px 14px; background: var(--panel); }
+.brand { display: none; }
+@media (max-width: 760px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  aside { position: static; height: auto; }
+}
+.grp h3 { color: var(--brand-2); font-size: 12px; font-weight: 700; letter-spacing: 0; padding: 0 12px 8px; }
+.grp + .grp { border-top: 1px dashed var(--line); }
+.bot { border-radius: 6px; border: 0; border-left: 3px solid transparent; padding: 8px 12px 8px 10px; }
+.bot:hover { background: var(--sky); }
+.bot[aria-current="true"] { background: var(--sky); border-left-color: var(--brand-2); }
+.bot[aria-current="true"] b { color: var(--brand-2); }
+/* 아이콘 타일: 연한 하늘색 바탕 + 브랜드 블루 선, 선택 시 반전 */
+.bot .ic { width: 30px; height: 30px; border-radius: 8px; background: var(--sky); color: var(--brand-2);
+  display: grid; place-items: center; font-size: 16px; transition: background .15s, color .15s; }
+.bot .ic svg, .head h1 .ic svg { width: 18px; height: 18px; }
+.bot:hover .ic { background: var(--sky-line); }
+.bot[aria-current="true"] .ic { background: var(--brand-2); color: #fff; }
+.head h1 { display: flex; align-items: center; gap: 10px; }
+.head h1 .ic { width: 34px; height: 34px; border-radius: 8px; background: var(--brand-2); color: #fff; display: grid; place-items: center; font-size: 18px; flex: none; }
+.head h1 .ic svg { width: 20px; height: 20px; }
+.addbot { border-top: 1px dashed var(--line); }
+
+/* 본문 */
+main { padding: 22px clamp(16px, 3vw, 36px) 48px; gap: 16px; }
+.crumb { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.crumb b { color: var(--brand-2); font-weight: 600; }
+.head { background: var(--panel); border: 1px solid var(--line); border-top: 3px solid var(--brand-2); border-radius: 4px; padding: 16px 20px; }
+.head h1 { font-size: 20px; letter-spacing: -.01em; }
+.tabs { gap: 0; border-bottom: 1px solid var(--line); }
+.tab { border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: none; padding: 8px 16px; font-size: 14px; color: var(--muted); margin-bottom: -1px; }
+.tab:hover { color: var(--fg); }
+.tab[aria-selected="true"] { background: none; color: var(--brand-2); border-color: var(--brand-2); font-weight: 700; }
+section.card { border-radius: 4px; padding: 0; overflow: hidden; }
+section.card > form, section.card > div { padding: 18px 20px; }
+section.card > h2 { margin: 0; padding: 10px 20px; font-size: 13px; color: var(--fg); background: var(--chip); border-bottom: 1px solid var(--line); letter-spacing: 0; }
+section.card > h2::before { content: ""; display: inline-block; width: 3px; height: 11px; background: var(--brand-2); margin-right: 8px; vertical-align: -1px; }
+
+/* 입력·버튼 */
+input[type=text], input[type=date], select, textarea { border-radius: 4px; background: var(--panel); }
+.btn { border-radius: 4px; padding: 9px 18px; }
+.btn.primary { background: var(--brand-2); border-color: var(--brand-2); }
+.btn.primary:hover { background: var(--brand); border-color: var(--brand); }
+.status { border-radius: 4px; }
+.kpi { border-radius: 4px; border-top: 3px solid var(--brand-2); }
+pre.out { border-radius: 4px; }
 </style>
 </head>
 <body>
+<header class="top">
+  <div class="logo"><i>IoT</i>IoT업무봇(Beta)<small>IoT기획 반복 업무를 한 곳에서</small></div>
+  <div class="limits" id="limits"></div>
+</header>
 <div class="app">
-  <aside>
-    <div class="brand">업무 봇<small>반복 업무를 한 곳에서 실행</small></div>
+  <button type="button" class="navtoggle" id="navtoggle" aria-controls="sidenav" aria-expanded="true" aria-label="왼쪽 메뉴 접기" title="메뉴 접기 (Ctrl+B)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+  <aside id="sidenav">
+    <div class="brand">IoT업무봇(Beta)<small>반복 업무를 한 곳에서 실행</small></div>
     <nav id="bots" aria-label="봇 목록"></nav>
     <nav id="botsys" aria-label="관리"></nav>
     <div class="addbot">봇 추가: <code>bots/&lt;이름&gt;/</code> 폴더에 <code>bot.json</code> + <code>adapter.py</code> 를 넣고 새로 고침</div>
   </aside>
   <main>
-    <div class="head"><h1 id="title">불러오는 중…</h1><p id="desc"></p></div>
+    <div class="head"><div class="crumb" id="crumb"></div><h1 id="title">불러오는 중…</h1><p id="desc"></p></div>
     <div class="tabs" id="tabs" role="tablist"></div>
     <section class="card" id="formcard"><form id="form" novalidate></form></section>
     <section class="card" id="resultcard" hidden><h2>결과</h2><div id="result"></div></section>
-    <section class="card"><h2>최근 실행</h2><div class="hist" id="hist"></div></section>
+    <dialog class="vals" id="dlg" aria-labelledby="dlgt"></dialog>
+    <dialog class="ps" id="psdlg" aria-labelledby="psdlgt"></dialog>
+    <section class="card" id="histcard"><h2>최근 실행<small id="histn"></small></h2><div class="hist" id="hist" tabindex="0" aria-label="최근 실행 목록"></div></section>
   </main>
 </div>
 <script>
@@ -169,16 +380,43 @@ function defVal(f) {
   if (f.type === "checkbox") return !!f.default;
   if (f.type === "select") return f.default ?? f.options[0];
   if (f.type === "multi") return f.default || [];
+  if (f.type === "hidden") return f.default ?? null;
   return f.default ?? "";
 }
 
+// 봇 아이콘: 같은 선 굵기의 단색 선형 아이콘 (색은 CSS currentColor = 테마 색). 없는 봇은 bot.json 의 이모지
+const ICON_PATHS = {
+  "jira-tasks": '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M9 11h6M9 15h4"/><path d="M17 15v4M15 17h4"/>',
+  "spec-doc": '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h6"/>',
+  "my-tasks": '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8l1.5 1.5L12 7"/><path d="M8 14l1.5 1.5L12 13"/><path d="M14 8h3M14 14h3"/>',
+  "product-status": '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11"/><path d="M12 13l1.2 1.2L15.5 12"/><path d="M12 17.5h5"/>',
+  "figma-ux": '<rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M9 6h6"/><rect x="9" y="9" width="6" height="4" rx=".5"/><path d="M9 16h6M10 19h4"/>',
+  "qa": '<path d="M21 12a8 8 0 0 1-11.5 7.2L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5"/><path d="M12 16h.01"/>',
+  "ims": '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/><path d="M7 12l3-3 2 2 4-4"/>',
+  "daily-summary": '<path d="M4 20V4"/><path d="M4 20h16"/><rect x="7" y="12" width="3" height="5" rx=".5"/><rect x="12" y="8" width="3" height="9" rx=".5"/><rect x="17" y="10" width="3" height="7" rx=".5"/>',
+  "meeting-room": '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M8 15h3M13 15h3"/>',
+  "healthcare": '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/><path d="M8 12h2l1-2 2 4 1-2h2"/>',
+  "sync": '<path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 20v-4h-4"/>'
+};
+const icon = b => ICON_PATHS[b.id]
+  ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON_PATHS[b.id]}</svg>`
+  : esc(b.icon || "🤖");
+
+// 접은 묶음 (브라우저에 기억). 지금 선택한 메뉴가 들어 있는 묶음은 항상 펼친다
+let closedGroups = [];
+try { closedGroups = JSON.parse(localStorage.getItem("hub.closed") || "[]"); } catch (e) {}
 function renderBots() {
-  const btn = b => `<button class="bot" data-id="${esc(b.id)}" aria-current="${bot && bot.id === b.id}">
-    <span class="ic">${esc(b.icon || "🤖")}</span><span><b>${esc(b.name)}</b><span>${esc(b.tagline || (b.actions || []).filter(a => !a.hidden).map(a => a.label).join(" · "))}</span></span></button>`;
+  const tip = b => b.tagline || (b.actions || []).filter(a => !a.hidden).map(a => a.label).join(" · ");
+  const btn = b => `<button class="bot" data-id="${esc(b.id)}" aria-current="${bot && bot.id === b.id}" title="${esc(b.name + " — " + tip(b))}" aria-label="${esc(b.name)}">
+    <span class="ic">${icon(b)}</span><span><b>${esc(b.name)}</b><span>${esc(tip(b))}</span></span></button>`;
   // bot.json 의 group 으로 묶는다 (순서는 order 순으로 처음 나온 묶음 순). group "system"(동기화 등)은 맨 아래에 따로
   const groups = new Map();
   bots.filter(b => b.group !== "system").forEach(b => { const g = b.group || "기타"; groups.has(g) || groups.set(g, []); groups.get(g).push(b); });
-  $("bots").innerHTML = [...groups].map(([g, list]) => `<div class="grp" role="group" aria-label="${esc(g)}"><h3>${esc(g)}</h3>${list.map(btn).join("")}</div>`).join("");
+  $("bots").innerHTML = [...groups].map(([g, list]) => {
+    const closed = closedGroups.includes(g) && !list.some(b => bot && b.id === bot.id);
+    return `<div class="grp${closed ? " closed" : ""}" role="group" aria-label="${esc(g)}">
+      <h3><button type="button" data-grp="${esc(g)}" aria-expanded="${!closed}"><span class="chev">▼</span>${esc(g)}<span class="cnt">${list.length}</span></button></h3>${list.map(btn).join("")}</div>`;
+  }).join("");
   $("botsys").innerHTML = bots.filter(b => b.group === "system").map(btn).join("");
 }
 function selectBot(id, actId) {
@@ -187,8 +425,9 @@ function selectBot(id, actId) {
   const vis = bot.actions.filter(a => !a.hidden);
   action = vis.find(a => a.id === actId) || vis[0];
   try { localStorage.setItem("hub.last", bot.id + "/" + action.id); } catch (e) {}
-  $("title").textContent = `${bot.icon || "🤖"} ${bot.name}`;
+  $("title").innerHTML = `<span class="ic">${icon(bot)}</span>${esc(bot.name)}`;
   $("desc").textContent = bot.description || "";
+  $("crumb").innerHTML = `IoT업무봇(Beta) › <b>${esc(bot.group === "system" ? "관리" : bot.group || "기타")}</b>`;
   renderTabs(); renderBots(); renderForm();
   const s = runs[curKey()];
   if (s && s.res && !action.auto) showResult(s.res, true); else $("resultcard").hidden = true;
@@ -208,7 +447,7 @@ async function prepare() {
     const r = await api("/api/run", { bot: bot.id, action: action.init_action, params: draft() }).catch(() => null);
     if (action === act && r && r.ok) {
       const v = draft(), t = touched[k] ||= {};
-      Object.entries((r.data || {}).values || {}).forEach(([n, x]) => { if (!t[n] && !String(v[n] ?? "").trim() && (act.fields || []).some(f => f.name === n)) v[n] = x; });
+      Object.entries((r.data || {}).values || {}).forEach(([n, x]) => { if (!t[n] && (typeof x === "boolean" || !String(v[n] ?? "").trim()) && (act.fields || []).some(f => f.name === n)) v[n] = x; });
       renderForm();
     }
   }
@@ -218,16 +457,21 @@ async function loadOptions() {
   const k = bot.id + "/" + action.id, act = action;
   const r = await api("/api/run", { bot: bot.id, action: action.options_action, params: draft() }).catch(() => null);
   if (action !== act) return;
-  if (r && r.ok) { opts[k] = r.data || {}; renderForm(); }
+  if (r && r.ok) {
+    opts[k] = r.data || {};
+    const v = draft();  // 선택지와 함께 온 기본 선택(_default)으로 비어 있는 목록을 채운다
+    Object.entries(opts[k]._default || {}).forEach(([n, x]) => { if (!(v[n] || []).length) v[n] = x; });
+    renderForm();
+  }
   else setStatus("bad", (r && r.text) || "선택지를 불러오지 못했습니다");
 }
 
 function draft() { const k = bot.id + "/" + action.id; return drafts[k] ||= Object.fromEntries((action.fields || []).map(f => [f.name, defVal(f)])); }
-function visible(f, v) { return !f.show_if || Object.entries(f.show_if).every(([k, x]) => v[k] === x); }
+function visible(f, v) { return !f.show_if || Object.entries(f.show_if).every(([k, x]) => Array.isArray(x) ? x.includes(v[k]) : v[k] === x); }
 function renderForm() {
   const v = draft(), fs = action.fields || [];
   const field = f => {
-    if (!visible(f, v)) return "";
+    if (!visible(f, v) || f.type === "hidden") return "";
     const id = "f_" + f.name, req = f.required ? '<span class="req">*</span>' : "", ph = esc(f.placeholder || "");
     const help = f.help ? `<div class="help">${esc(f.help).replace(/\n/g, "<br>")}</div>` : "";
     if (f.type === "textarea") return `<div class="row"><label for="${id}">${esc(f.label)}${req}</label><textarea id="${id}" name="${f.name}" placeholder="${ph}">${esc(v[f.name])}</textarea>${help}</div>`;
@@ -252,7 +496,7 @@ function renderForm() {
     if (r && r.ok && el) el.innerHTML = (r.data || []).map(x => `<option value="${esc(x)}">`).join("");
   }));
   $("form").innerHTML = fs.map(field).join("") +
-    `<div class="actions"><button class="btn ${action.confirm ? "danger" : "primary"}" type="submit" id="go">${esc(action.button || "실행")}</button><span id="st"></span></div>`;
+    `<div class="actions"><button class="btn ${action.confirm ? "danger" : "primary"}" type="submit" id="go">${esc(action.button || "실행")}</button>${(action.extra || []).map((x, i) => `<button class="btn" type="button" data-extra="${i}">${esc(x.button)}</button>`).join("")}<span id="st"></span></div>`;
   // 입력란 없이 바로 실행되는 기능(설정 등)은 양식 카드를 숨긴다
   $("formcard").hidden = !fs.length && !!action.auto;
 }
@@ -285,7 +529,10 @@ $("form").addEventListener("input", e => {
     const tgt = document.getElementById("f_" + f.name);
     if (tgt) tgt.value = val;
   });
-  if (el.type === "radio") renderForm();
+  if (el.type === "radio") {  // 다시 그리면 change 이벤트가 사라지므로 선택지 다시 불러오기는 여기서
+    if ((action.options_on || []).includes(el.name)) { (action.fields || []).filter(f => f.type === "multi").forEach(f => v[f.name] = []); loadOptions(); }
+    else renderForm();
+  }
 });
 // fill_action 이 있는 칸(에픽 키 등)을 입력하면 봇의 숨은 기능으로 나머지 칸을 채운다 (직접 고친 칸은 그대로)
 $("form").addEventListener("change", e => {
@@ -317,22 +564,38 @@ async function submit(e) {
   await runAction(action.id, Object.fromEntries((action.fields || []).filter(f => visible(f, v)).map(f => [f.name, v[f.name]])));
 }
 $("form").addEventListener("submit", submit);
+// 추가 버튼: 같은 입력값으로 다른(숨은) 기능을 실행하고, 결과는 지금 보고 있는 탭에 보여 준다
+$("form").addEventListener("click", async e => {
+  const b = e.target.closest("[data-extra]");
+  if (!b) return;
+  const x = (action.extra || [])[+b.dataset.extra];
+  if (!x) return;
+  if (x.dialog === "jira_values") { openValues(); return; }
+  if (busy) { setStatus("bad", "다른 기능이 실행 중입니다 — 끝난 뒤 다시 눌러 주세요"); return; }
+  const v = draft();
+  const miss = (action.fields || []).filter(f => f.required && visible(f, v) && !String(v[f.name] ?? "").trim());
+  if (miss.length) { setStatus("bad", `입력 필요: ${miss.map(f => f.label).join(", ")}`); return; }
+  if (x.confirm && !confirm(x.confirm)) return;
+  await runAction(x.action, Object.fromEntries((action.fields || []).filter(f => visible(f, v)).map(f => [f.name, v[f.name]])), action.id);
+});
 
-async function runAction(actId, params) {
+async function runAction(actId, params, as) {
   busy = true;
   // 실행 중에 다른 탭·봇으로 옮겨도 결과는 이 기능에 남기고, 이 기능을 보고 있을 때만 화면에 그린다
-  const k = bot.id + "/" + actId, s = runs[k] = { running: true }, mine = () => curKey() === k;
+  const k = bot.id + "/" + (as || actId), s = runs[k] = { running: true }, mine = () => curKey() === k;
   const st = (kind, msg) => { s.status = [kind, msg]; if (mine()) setStatus(kind, msg); };
   const go = $("go"); if (go) go.disabled = true;
+  document.querySelectorAll("[data-extra]").forEach(b => b.disabled = true);
   renderTabs();
   const t0 = Date.now();
   st("run", "실행 중…");
   const tick = setInterval(() => st("run", `실행 중… ${Math.round((Date.now() - t0) / 1000)}초`), 1000);
   let res;
   try { res = await api("/api/run", { bot: k.split("/")[0], action: actId, params }); }
-  catch (err) { res = { ok: false, text: "업무 봇 서버에 연결할 수 없습니다. 터미널에서 hub.py 가 실행 중인지 확인하세요." }; }
+  catch (err) { res = { ok: false, text: "IoT업무봇 서버에 연결할 수 없습니다. 터미널에서 hub.py 가 실행 중인지 확인하세요." }; }
   clearInterval(tick); busy = false; s.running = false; s.res = res;
   if (mine() && $("go")) $("go").disabled = false;
+  document.querySelectorAll("[data-extra]").forEach(b => b.disabled = false);
   st(res.ok ? "ok" : "bad", res.ok ? `완료 (${((Date.now() - t0) / 1000).toFixed(1)}초)` : "오류");
   if (mine()) showResult(res);
   if (bot && bot.id === k.split("/")[0]) renderTabs();
@@ -345,10 +608,16 @@ function showResult(res, restore) {
   const head = res.headline ? `<p class="status ${res.ok ? "ok" : "bad"}">${esc(res.headline)}</p>` : "";
   const raw = res.text ? `<pre class="out">${esc(res.text)}</pre>` : "";
   if (res.view === "cards") $("result").innerHTML = renderCards(res.data);
+  else if (res.view === "table") $("result").innerHTML = head + renderTables(res.data);
+  else if (res.view === "usage_chart") { $("result").innerHTML = renderUsage(res.data) + (raw ? `<details><summary>데이터 수집 로그</summary>${raw}</details>` : ""); bindUsage(res.data); }
   else if (res.view === "jira_settings") { $("result").innerHTML = renderSettings(res.data, res.saved); }
   else if (res.view === "jira_plan") $("result").innerHTML = renderPlan(res.data) + (raw ? `<details><summary>실행 로그</summary>${raw}</details>` : "");
   else if (res.view === "spec_draft") $("result").innerHTML = renderSpec(res.data) + (raw ? `<details><summary>실행 로그</summary>${raw}</details>` : "");
   else if (res.view === "spec_list") $("result").innerHTML = renderSpecList(res.data);
+  else if (res.view === "ux_plan") $("result").innerHTML = renderUx(res.data) + (raw ? `<details><summary>실행 로그</summary>${raw}</details>` : "");
+  else if (res.view === "ux_list") $("result").innerHTML = renderUxList(res.data);
+  else if (res.view === "my_tasks") $("result").innerHTML = renderMyTasks(res.data) + (raw ? `<details><summary>실행 로그</summary>${raw}</details>` : "");
+  else if (res.view === "product_status") $("result").innerHTML = renderPs(res.data) + (raw ? `<details${res.quiet ? "" : " open"}><summary>실행 결과</summary>${raw}</details>` : "") + (res.ok ? "" : `<p class="status bad">${esc(res.text || "오류")}</p>`);
   else if (res.view === "qa_list") { $("result").innerHTML = renderQa(res.data); syncSched(); }
   else if (res.view === "qa_schedules") $("result").innerHTML = renderSchedules(res.data) + (raw ? `<details><summary>실행 로그</summary>${raw}</details>` : "");
   else $("result").innerHTML = (head || (res.ok ? "" : `<p class="status bad">실행하지 못했습니다</p>`)) + (raw || '<p class="empty">출력 없음</p>');
@@ -371,6 +640,7 @@ function renderSettings(c, saved) {
       <td><input class="sm" data-k="default_docs.${i}.prefix" value="${esc(d.prefix)}" aria-label="머리말"></td>
       <td><input data-k="default_docs.${i}.title" value="${esc(d.title)}" aria-label="문서 제목">
         <details><summary>설명 양식${d.description ? " ✎" : ""}</summary><textarea data-k="default_docs.${i}.description" aria-label="설명">${esc(d.description)}</textarea></details></td>
+      ${["국내향", "해외향"].map(r => `<td class="nowrap"><input type="checkbox" data-reg="${i}|${r}" ${(d.regions || ["국내향", "해외향"]).includes(r) ? "checked" : ""} aria-label="${esc(d.title)} ${r}"></td>`).join("")}
       <td class="nowrap"><button type="button" class="ibtn" data-mv="${i},-1" ${i ? "" : "disabled"} aria-label="위로">↑</button><button type="button" class="ibtn" data-mv="${i},1" ${i < cfg.default_docs.length - 1 ? "" : "disabled"} aria-label="아래로">↓</button><button type="button" class="ibtn del" data-del="default_docs,${i}" aria-label="삭제">✕</button></td></tr>`).join("");
   const prodRows = (cfg.products || []).map((p, i) => `<tr>
       <td><input data-k="products.${i}.name" value="${esc(p.name)}" placeholder="대만향 아이콘3" aria-label="제품명"></td>
@@ -380,8 +650,10 @@ function renderSettings(c, saved) {
   const ex = cfg.default_docs[0] ? `${cfg.default_docs[0].prefix} 대만향 아이콘3 ${cfg.default_docs[0].title}` : "";
   return `${saved ? '<p class="status ok">저장했습니다. 다음 생성부터 적용됩니다.</p>' : ""}
     <h3>기본 하위 문서 <small>${cfg.default_docs.length}개 · 제목 = 머리말 + 제품명 + 문서 제목${ex ? ` (예: ${esc(ex)})` : ""} · 설명의 {제품}은 제품명으로 바뀜</small></h3>
-    <div class="tbl"><table class="edit"><thead><tr><th>#</th><th>머리말</th><th>문서 제목</th><th></th></tr></thead><tbody>${docRows}</tbody></table></div>
+    <div class="tbl"><table class="edit"><thead><tr><th>#</th><th>머리말</th><th>문서 제목</th><th>국내향</th><th>해외향</th><th></th></tr></thead><tbody>${docRows}</tbody></table></div>
     <button type="button" class="btn" data-add="doc">+ 기본 문서 추가</button>
+    <h3>기준 에픽 <small>새 제품 하위 문서의 '값 설정'(담당자·구성요소·레이블·우선순위)을 이 에픽의 같은 문서에서 가져옵니다</small></h3>
+    <input class="sm" style="width:220px" data-k="reference_epic" value="${esc(cfg.reference_epic || "")}" placeholder="IOCARERENEW2023-2597" aria-label="기준 에픽 키">
     <h3>별도 하위 문서 머리말</h3>
     <input class="sm" data-k="custom_prefix" value="${esc(cfg.custom_prefix || "")}" aria-label="별도 문서 머리말"> <small class="muted">별도 문서 제목 = 이 머리말 + 제품명 + 입력한 제목</small>
     <h3>제품 등록 <small>제품명으로 프로젝트 문서(에픽)와 기본 담당자를 찾습니다. 하위 문서가 아직 없는 새 제품은 여기 등록하세요.</small></h3>
@@ -394,13 +666,20 @@ function cfgSet(path, val) {
   ks.slice(0, -1).forEach(k => o = o[k]);
   o[ks[ks.length - 1]] = val;
 }
-$("result").addEventListener("input", e => { if (cfg && e.target.dataset.k) cfgSet(e.target.dataset.k, e.target.value); });
+$("result").addEventListener("input", e => {
+  if (cfg && e.target.dataset.k) cfgSet(e.target.dataset.k, e.target.value);
+  if (cfg && e.target.dataset.reg) {  // 기본 문서의 향지(국내향·해외향) 체크
+    const [i, r] = e.target.dataset.reg.split("|"), d = cfg.default_docs[+i], a = new Set(d.regions || ["국내향", "해외향"]);
+    e.target.checked ? a.add(r) : a.delete(r);
+    d.regions = ["국내향", "해외향"].filter(x => a.has(x));
+  }
+});
 $("result").addEventListener("click", async e => {
   if (!cfg || !document.getElementById("savecfg")) return;
   const t = e.target, rerender = () => { $("result").innerHTML = renderSettings(cfg); };
   if (t.dataset.mv) { const [i, d] = t.dataset.mv.split(",").map(Number); const a = cfg.default_docs; [a[i], a[i + d]] = [a[i + d], a[i]]; rerender(); }
   else if (t.dataset.del) { const [k, i] = t.dataset.del.split(","); cfg[k].splice(+i, 1); rerender(); }
-  else if (t.dataset.add === "doc") { cfg.default_docs.push({ prefix: cfg.custom_prefix || "[기획]", title: "", description: "" }); rerender(); $("result").querySelector(`[data-k="default_docs.${cfg.default_docs.length - 1}.title"]`).focus(); }
+  else if (t.dataset.add === "doc") { cfg.default_docs.push({ prefix: cfg.custom_prefix || "[기획]", title: "", description: "", regions: ["국내향", "해외향"] }); rerender(); $("result").querySelector(`[data-k="default_docs.${cfg.default_docs.length - 1}.title"]`).focus(); }
   else if (t.dataset.add === "product") { (cfg.products ||= []).push({ name: "", epic: "", assignee: "" }); rerender(); }
   else if (t.id === "savecfg") {
     cfg.default_docs = cfg.default_docs.filter(d => d.title.trim() || d.description.trim());
@@ -412,6 +691,25 @@ $("result").addEventListener("click", async e => {
   }
 });
 
+// 표 결과(여러 표): data = {tables: [{title, columns, rows, total, shown}], file}
+function renderTables(d) {
+  const file = d.file ? `<div class="actions" style="margin:0 0 12px"><button class="btn primary" type="button" data-open-file="file">엑셀 열기</button>
+    <button class="btn" type="button" data-open-file="folder">폴더 열기</button><span class="muted">${esc(d.file)}</span></div>` : "";
+  const one = t => {
+    const more = t.total > t.shown ? ` <span class="muted">— 화면에는 ${num(t.shown)}건만, 전체는 엑셀에</span>` : "";
+    if (!t.total) return `<details><summary>${esc(t.title)} (0건)</summary><p class="empty">데이터 없음</p></details>`;
+    return `<details open><summary>${esc(t.title)} (${num(t.total)}건)${more}</summary><div class="tbl"><table><thead><tr>${t.columns.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead>
+      <tbody>${t.rows.map(r => `<tr>${r.map(v => `<td>${esc(v ?? "")}</td>`).join("")}</tr>`).join("")}</tbody></table></div></details>`;
+  };
+  return file + (d.tables || []).map(one).join("");
+}
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-open-file]");
+  if (!b) return;
+  const d = (runs[curKey()] || {}).res?.data || {};
+  await api("/api/run", { bot: bot.id, action: "open_file", params: { file: d.file, what: b.dataset.openFile } }).catch(() => null);
+});
+
 function renderCards(d) {
   return `<div class="cards">${d.cards.map(c => {
     const n = parseFloat(c.value), g = c.gauge && !isNaN(n);
@@ -419,6 +717,61 @@ function renderCards(d) {
     return `<div class="kpi"><span>${esc(c.label)}</span><b>${esc(c.value ?? "-")}<small>${esc(c.unit || "")}</small></b>
       ${g ? `<div class="gauge"><i class="${cls}" style="width:${Math.min(100, n)}%"></i></div>` : ""}${c.sub ? `<span>${esc(c.sub)}</span>` : ""}</div>`;
   }).join("")}</div>${d.note ? `<p class="note">${esc(d.note)}</p>` : ""}`;
+}
+
+// 기간 리포트: 날짜별 계정 전체 토큰 (PC별 누적 막대) — 숫자는 전부 표기
+const PC_COLORS = ["var(--s1)", "var(--s2)", "var(--s3)", "var(--s4)"];  // PC 순서(mac, windows, …)대로 고정
+const num = n => Number(n || 0).toLocaleString("ko-KR");
+function renderUsage(d) {
+  const pcs = d.pcs, days = d.days, n = days.length;
+  const max = Math.max(1, ...days.map(x => x.total));
+  const step = 10 ** Math.floor(Math.log10(max)), top = Math.ceil(max / step) * step;
+  const ticks = [0, .25, .5, .75, 1].map(f => Math.round(top * f));
+  const W = 960, H = 300, L = 112, R = 12, T = 12, B = 34, pw = W - L - R, ph = H - T - B;
+  const bw = pw / n, gap = Math.min(6, bw * .25), y = v => T + ph - v / top * ph;
+  const every = Math.ceil(n / 12);
+  let bars = "";
+  days.forEach((x, i) => {
+    let base = 0, segs = "";
+    pcs.forEach((m, j) => {
+      const v = x.by[m] || 0;
+      if (!v) return;
+      const y1 = y(base + v), h = Math.max(1, y(base) - y1 - (base ? 2 : 0));
+      segs += `<rect x="${(L + i * bw + gap / 2).toFixed(1)}" y="${y1.toFixed(1)}" width="${(bw - gap).toFixed(1)}" height="${h.toFixed(1)}" rx="${Math.min(4, (bw - gap) / 2)}" fill="${PC_COLORS[j % 4]}"/>`;
+      base += v;
+    });
+    bars += `<g class="ub" data-i="${i}"><rect class="hit" x="${(L + i * bw).toFixed(1)}" y="${T}" width="${bw.toFixed(1)}" height="${ph}"/>${segs}</g>`;
+  });
+  const grid = ticks.map(t => `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}"/><text x="${L - 8}" y="${y(t) + 4}" text-anchor="end">${num(t)}</text>`).join("");
+  const xl = days.map((x, i) => i % every ? "" : `<text x="${(L + i * bw + bw / 2).toFixed(1)}" y="${H - 12}" text-anchor="middle">${x.date.slice(5).replace("-", "/")}</text>`).join("");
+  const kpi = [["기간 합계", num(d.total), "토큰"], ["사용일 평균", num(d.avg), `토큰 · ${d.active}일 사용`],
+    ["최대 사용일", d.peak ? num(d.peak.total) : "-", d.peak ? d.peak.date : ""],
+    ...pcs.map(m => [`${m} 합계`, num(d.pc_total[m]), d.total ? `${Math.round(d.pc_total[m] / d.total * 100)}%` : ""])];
+  const legend = pcs.map((m, j) => `<span><i style="background:${PC_COLORS[j % 4]}"></i>${esc(m)}</span>`).join("");
+  const rows = days.filter(x => x.total).map(x => `<tr><td>${x.date}</td>${pcs.map(m => `<td class="r">${num(x.by[m])}</td>`).join("")}<td class="r"><b>${num(x.total)}</b></td></tr>`).join("");
+  return `<div class="ukpi">${kpi.map(([a, b, c]) => `<div class="kpi"><span>${esc(a)}</span><b>${b}</b><span>${esc(c)}</span></div>`).join("")}</div>
+    <div class="uchart"><div class="uhead"><b>일일 토큰 사용량 · 계정 전체</b><span class="muted">${d.start} ~ ${d.end}</span><span class="ulegend">${legend}</span></div>
+    <div class="uplot"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${d.start}부터 ${d.end}까지 일일 토큰 사용량, PC별 누적 막대">
+      <g class="ugrid">${grid}</g><g class="ux">${xl}</g>${bars}</svg><div class="utip" id="utip" hidden></div></div></div>
+    <details><summary>날짜별 표 (사용한 날만)</summary><div class="tbl"><table><thead><tr><th>날짜</th>${pcs.map(m => `<th class="r">${esc(m)}</th>`).join("")}<th class="r">합계</th></tr></thead><tbody>${rows}</tbody></table></div></details>`;
+}
+function bindUsage(d) {
+  const tip = $("utip"), plot = tip && tip.parentElement;
+  if (!plot) return;
+  plot.addEventListener("mousemove", e => {
+    const g = e.target.closest(".ub");
+    plot.querySelectorAll(".ub.on").forEach(x => x !== g && x.classList.remove("on"));
+    if (!g) { tip.hidden = true; return; }
+    g.classList.add("on");
+    const x = d.days[+g.dataset.i];
+    tip.innerHTML = `<b>${x.date}</b>${d.pcs.map((m, j) => `<div><i style="background:${PC_COLORS[j % 4]}"></i>${esc(m)}<span>${num(x.by[m])}</span></div>`).join("")}<div class="sum">합계<span>${num(x.total)}</span></div>`;
+    tip.hidden = false;
+    const r = plot.getBoundingClientRect(), w = tip.offsetWidth;
+    let left = e.clientX - r.left + 14;
+    if (left + w > r.width) left = e.clientX - r.left - w - 14;
+    tip.style.left = Math.max(0, left) + "px"; tip.style.top = Math.max(0, e.clientY - r.top - 20) + "px";
+  });
+  plot.addEventListener("mouseleave", () => { tip.hidden = true; plot.querySelectorAll(".ub.on").forEach(x => x.classList.remove("on")); });
 }
 
 // Jira 미리보기: 체크 해제한 항목은 만들지 않음
@@ -436,14 +789,14 @@ function renderPlan(d) {
     else st = `<span class="pill new">새로 만듦</span>`;
     const lock = d.done || (x.skip && x.skip !== "제외");
     return `<tr class="${on || x.created ? "" : "off"}"><td><input type="checkbox" data-i="${i}" ${on ? "checked" : ""} ${lock ? "disabled" : ""} aria-label="${esc(x.summary)} 생성"></td>
-      <td>${esc(x.summary)}${x.description ? `<details><summary>설명</summary><pre class="out">${esc(x.description)}</pre></details>` : ""}</td><td>${esc(x.assignee ? x.assignee.displayName : "(미지정)")}</td><td>${st}</td></tr>`;
+      <td>${esc(x.summary)}${p.per_task ? `<br><small class="muted">${esc([x.components.join(", "), x.labels.join(", "), x.priority, x.duedate && "기한 " + x.duedate].filter(Boolean).join(" · "))}</small>` : ""}${x.description ? `<details><summary>설명</summary><pre class="out">${esc(x.description)}</pre></details>` : ""}</td><td>${esc(x.assignee ? x.assignee.displayName : "(미지정)")}</td><td>${st}</td></tr>`;
   }).join("");
   const n = p.tasks.filter(x => !x.skip && !x.created).length;
-  return `<div class="planmeta"><span>제품 <b>${esc(p.product || "")}</b></span><span>프로젝트 문서 <b>${ep.key ? link(ep.key) : "새로 만듦"}</b> ${esc(ep.summary)}</span>
-      <span>구성요소 <b>${esc(p.components.join(", "))}</b></span><span>레이블 <b>${esc(p.labels.join(", "))}</b></span>
+  return `<div class="planmeta"><span>제품 <b>${esc(p.product || "")}</b>${p.region ? ` (${esc(p.region)})` : ""}</span><span>프로젝트 문서 <b>${ep.key ? link(ep.key) : "새로 만듦"}</b> ${esc(ep.summary)}</span>
+      ${p.per_task ? "" : `<span>구성요소 <b>${esc(p.components.join(", "))}</b></span><span>레이블 <b>${esc(p.labels.join(", "))}</b></span>`}
       <span>이슈 유형 <b>${esc(p.issuetype)}</b></span><span>보고자 <b>${esc(p.reporter ? p.reporter.displayName : "나")}</b></span>
-      <span>우선순위 <b>${esc(p.priority || "기본값")}</b></span><span>기한 <b>${esc(p.duedate || "-")}</b></span></div>
-    <div class="tbl"><table><thead><tr><th></th><th>하위 문서</th><th>담당자</th><th>상태</th></tr></thead><tbody id="planrows">${rows}</tbody></table></div>
+      ${p.per_task ? "" : `<span>우선순위 <b>${esc(p.priority || "기본값")}</b></span><span>기한 <b>${esc(p.duedate || "-")}</b></span>`}</div>
+    <div class="tbl"><table><thead><tr><th></th><th>${p.kind === "epic" ? "프로젝트 문서" : "하위 문서"}</th><th>담당자</th><th>상태</th></tr></thead><tbody id="planrows">${rows}</tbody></table></div>
     <div class="actions" style="margin-top:14px">${d.done
       ? `<span class="status ok">생성 완료 — ${ep.key ? link(ep.key) : ""}</span>`
       : n ? `<button class="btn danger" id="apply">Jira에 ${n}개 생성</button><span class="note" style="margin:0">체크를 해제한 문서는 만들지 않습니다.</span>`
@@ -462,7 +815,8 @@ async function applyPlan() {
   const todo = plan.plan.tasks.filter(x => !x.skip && !x.created);
   const ep = plan.plan.epic;
   const list = todo.slice(0, 12).map(x => " · " + x.summary).join("\n") + (todo.length > 12 ? `\n · 외 ${todo.length - 12}개` : "");
-  if (!confirm(`${ep.key} 에 하위 문서 ${todo.length}개를 만듭니다.\n\n${list}\n\n체크를 해제할 문서가 있으면 [취소]를 누르고 표에서 고른 뒤 생성 버튼을 누르세요.`)) return;
+  if (plan.plan.kind === "epic") { if (!confirm(`프로젝트 문서(에픽)를 만듭니다.\n\n · ${todo[0].summary}`)) return; }
+  else if (!confirm(`${ep.key} 에 하위 문서 ${todo.length}개를 만듭니다.\n\n${list}\n\n체크를 해제할 문서가 있으면 [취소]를 누르고 표에서 고른 뒤 생성 버튼을 누르세요.`)) return;
   const b = $("apply"); if (b) { b.disabled = true; b.textContent = "생성 중…"; }
   busy = true;
   let res;
@@ -472,6 +826,62 @@ async function applyPlan() {
   showResult(res);
   loadHistory();
 }
+
+// Jira 새 제품: 하위 문서별 값 설정 창 — 기준 에픽의 같은 문서 값으로 채우고, 고친 값은 이 기능 입력값(values)에 남긴다
+const PRIORITIES = ["", "블로커", "Highest", "High", "Medium", "Low", "Lowest", "사소함", "Urgent(P1)", "High(P2)", "Normal(P3)", "Low(P4)"];
+const VAL_KEYS = ["assignee", "components", "labels", "priority", "duedate"];
+let vals = null;
+async function openValues() {
+  const v = draft(), act = action;
+  if (!String(v.product || "").trim()) { setStatus("bad", "제품명을 먼저 입력하세요"); return; }
+  if (!(v.docs || []).length) { setStatus("bad", "만들 하위 문서를 먼저 체크하세요"); return; }
+  setStatus("run", "기준 문서 값 불러오는 중…");
+  const r = await api("/api/run", { bot: bot.id, action: "doc_values", params: { product: v.product, region: v.region } }).catch(() => null);
+  if (action !== act) return;
+  if (!r || !r.ok) { setStatus("bad", (r && r.text) || "기준 문서 값을 불러오지 못했습니다"); return; }
+  setStatus("", "");
+  const saved = v.values || {};
+  vals = { ref: r.data.ref, rows: r.data.docs.filter(d => v.docs.includes(d.summary)).map(d => ({ ...d, ...(saved[d.summary] || {}), orig: d.assignee })) };
+  renderValues();
+  $("dlg").showModal();
+}
+function renderValues() {
+  const link = k => `<a href="https://jira.coway.com/browse/${esc(k)}" target="_blank" rel="noopener">${esc(k)}</a>`;
+  const rows = vals.rows.map((x, i) => `<tr>
+      <td>${esc(x.summary)}<br><small class="muted">${x.ref_keys.length ? "기준: " + x.ref_keys.slice(0, 3).map(link).join(", ") : "기준 문서 없음 — 설정 기본값"}</small></td>
+      <td><input data-v="${i}.assignee" value="${esc(x.assignee)}" placeholder="이름 또는 이메일" aria-label="담당자">
+        ${x.assignee_name && x.assignee === x.orig ? `<small class="muted">${esc(x.assignee_name)}</small>` : ""}</td>
+      <td><input data-v="${i}.components" value="${esc(x.components)}" aria-label="구성 요소"></td>
+      <td><input data-v="${i}.labels" value="${esc(x.labels)}" aria-label="레이블"></td>
+      <td><select data-v="${i}.priority" aria-label="우선순위">${PRIORITIES.map(o => `<option value="${esc(o)}"${o === (x.priority || "") ? " selected" : ""}>${esc(o || "(기본값)")}</option>`).join("")}</select></td>
+      <td><input type="date" data-v="${i}.duedate" value="${esc(x.duedate || "")}" aria-label="기한"></td></tr>`).join("");
+  $("dlg").innerHTML = `<div class="dh"><b id="dlgt">하위 문서 값 설정</b>
+      <p>기준 에픽 ${vals.ref ? link(vals.ref) : "(설정에 없음)"} 의 같은 문서에서 가져온 값입니다. 고친 값은 이번 생성에만 쓰입니다. 구성 요소·레이블은 쉼표로 구분합니다.</p></div>
+    <div class="db">
+      <div class="bulk"><b>한꺼번에 바꾸기</b>
+        <select id="bk" aria-label="바꿀 항목"><option value="assignee">담당자</option><option value="components">구성 요소</option><option value="labels">레이블</option><option value="priority">우선순위</option><option value="duedate">기한</option></select>
+        <input id="bv" placeholder="값 (기한은 YYYY-MM-DD)" aria-label="바꿀 값"><button type="button" class="btn" data-vbulk>모든 문서에 적용</button></div>
+      <div class="tbl"><table class="edit"><thead><tr><th>하위 문서</th><th>담당자</th><th>구성 요소</th><th>레이블</th><th>우선순위</th><th>기한</th></tr></thead><tbody>${rows}</tbody></table></div>
+    </div>
+    <div class="df"><button type="button" class="btn primary" data-vsave>적용</button><button type="button" class="btn" data-vreset>기준 값으로 되돌리기</button>
+      <button type="button" class="btn" data-vclose>취소</button><span class="muted">적용 후 '생성하기'를 누르면 이 값으로 만듭니다.</span></div>`;
+}
+$("dlg").addEventListener("input", e => {
+  const k = e.target.dataset.v; if (!k || !vals) return;
+  const [i, n] = k.split(".");
+  vals.rows[+i][n] = e.target.value;
+});
+$("dlg").addEventListener("click", async e => {
+  const t = e.target;
+  if (t.dataset.vclose !== undefined || t === $("dlg")) $("dlg").close();
+  else if (t.dataset.vbulk !== undefined) { const k = $("bk").value, x = $("bv").value.trim(); vals.rows.forEach(r => r[k] = x); renderValues(); }
+  else if (t.dataset.vreset !== undefined) { delete draft().values; $("dlg").close(); openValues(); }
+  else if (t.dataset.vsave !== undefined) {
+    draft().values = Object.fromEntries(vals.rows.map(r => [r.summary, Object.fromEntries(VAL_KEYS.map(k => [k, r[k] || ""]))]));
+    $("dlg").close();
+    setStatus("ok", `값 설정 적용 (${vals.rows.length}개 문서) — '생성하기'를 누르면 이 값으로 만듭니다`);
+  }
+});
 
 // 기획 사양 정리: 초안 미리보기(위키 모양) · 게시 · 초안 목록
 let spec = null;
@@ -507,6 +917,268 @@ $("result").addEventListener("click", async e => {
     .catch(() => ({ ok: false, text: "서버 연결 실패" }));
   busy = false;
   showResult(res); loadHistory();
+});
+
+// 내 할 일: 기한 지남(별도 강조) → 기한 묶음 표(중요도 열) → 보류(기한 정해 되돌리기·삭제) → 완료(날짜별) → 내 일 아님
+function renderMyTasks(d) {
+  const lr = d.last_run, wd = "일월화수목금토";
+  const dd = s => s ? `${s.slice(5, 10).replace("-", "/")}(${wd[new Date(s.slice(0, 10) + "T00:00").getDay()]})` : "-";
+  const PRI = { "높음": "bad", "보통": "new", "낮음": "have" };
+  const pri = t => `<span class="pill ${PRI[t.priority] || "new"}">${esc(t.priority || "보통")}</span>`;
+  const color = { "지난 기한": "bad", "오늘": "bad", "이번 주": "sim" };
+  const label = d.group_label || {};
+  const info = [lr ? `마지막 확인 <b>${esc(lr.at)}</b> (${Math.max(1, Math.round(lr.sec / 60))}분, 새 자료 ${lr.items}건 → 새 할 일 ${lr.new} · 갱신 ${lr.updated} · 자동 완료 ${lr.done})` : "아직 찾은 적 없음 — [새로 찾기] 탭에서 시작하세요",
+    `매일 아침 <b>${d.schedule && d.schedule.on ? esc(d.conf.mail_time) + " 자동 실행 → 이 화면 + 워드" + (d.conf.mail_on ? " + 메일" : "") : "자동 실행 꺼짐"}</b>`,
+    `<button class="btn" type="button" data-mtdoc="1">워드로 저장·열기</button>`];
+  const what = t => `<b>${esc(t.title)}</b>${t.guessed ? ' <span class="pill sim">추정</span>' : ""}
+      <div style="font-size:13px;white-space:pre-line">${esc(t.detail || "")}</div>${t.quote ? `<div class="note" style="margin:2px 0 0">“${esc(t.quote)}”</div>` : ""}
+      ${t.history && t.history.length ? `<div class="note" style="margin:2px 0 0">변경: ${t.history.map(h => esc(h.at.slice(5) + " " + h.why)).join(" / ")}</div>` : ""}`;
+  const how = t => `${esc(t.how || "")}<div>${(t.links || []).map((l, i) => `<a href="${esc(l)}" target="_blank" rel="noopener">원문${t.links.length > 1 ? i + 1 : ""}</a>`).join(" ")}</div>`;
+  const btn = (t, st, txt) => `<button class="btn" type="button" data-mt="${esc(t.id)}" data-st="${st}">${txt}</button>`;
+  const dueCell = t => `${esc(dd(t.due))}${t.overdue_days ? `<div style="color:#C2412D;font-weight:700;font-size:12px">${t.overdue_days}일 지남</div>` : ""}${t.due_text ? `<div class="note" style="margin:0">${esc(t.due_text)}</div>` : ""}`;
+  const openRow = t => `<tr><td class="nowrap">${pri(t)}</td><td class="nowrap">${dueCell(t)}</td><td>${what(t)}</td>
+    <td class="nowrap">${esc(t.requester || "")}</td><td style="font-size:13px">${how(t)}</td>
+    <td class="nowrap">${btn(t, "done", "완료")} ${btn(t, "notmine", "내 일 아님")} ${btn(t, "hold", "보류")}</td></tr>`;
+  const head = '<thead><tr><th>중요도</th><th>기한</th><th>할 일</th><th>시킨 사람</th><th>어떻게</th><th></th></tr></thead>';
+  const tbl = (h, rows) => `<div class="tbl"><table>${h}<tbody>${rows}</tbody></table></div>`;
+  const today = d.today;
+  const holdRow = t => `<tr><td class="nowrap">${pri(t)}</td><td class="nowrap">${esc(dd(t.due))}<div class="note" style="margin:0">보류 ${esc((t.held || "").slice(5, 10).replace("-", "/"))}</div></td>
+    <td>${what(t)}</td><td class="nowrap">${esc(t.requester || "")}</td><td style="font-size:13px">${how(t)}</td>
+    <td class="nowrap"><label style="font-size:12px">기한 <input type="date" data-due-for="${esc(t.id)}" value="${esc(t.due && t.due >= today ? t.due : "")}" min="${esc(today)}"></label>
+      <select data-pri-for="${esc(t.id)}">${["높음", "보통", "낮음"].map(p => `<option${p === (t.priority || "보통") ? " selected" : ""}>${p}</option>`).join("")}</select><br>
+      <button class="btn" type="button" data-mt="${esc(t.id)}" data-st="open" data-need-due="1">할 일로 되돌리기</button> ${btn(t, "deleted", "삭제")}</td></tr>`;
+  const closedRow = t => `<tr><td class="nowrap">${pri(t)}</td><td>${what(t)}${t.closed_why ? `<div class="note" style="margin:2px 0 0">완료 근거: ${esc(t.closed_why)}</div>` : ""}</td>
+    <td class="nowrap">${esc((t.closed || "").slice(11, 16))} · ${t.closed_by === "자동" ? "자동 판단" : "직접 표시"}</td>
+    <td class="nowrap">${btn(t, "open", "되돌리기")}</td></tr>`;
+  const groups = d.groups.map(g => [g, d.open.filter(t => t.group === g)]).filter(([, l]) => l.length);
+  const over = groups.find(([g]) => g === "지난 기한"), rest = groups.filter(([g]) => g !== "지난 기한");
+  const hold = d.hold || [], days = d.done_days || [], notmine = d.notmine || [];
+  return `<div class="planmeta">${info.map(x => `<span>${x}</span>`).join("")}</div>
+    ${lr && lr.errors && lr.errors.length ? `<p class="status bad">읽지 못한 자료: ${lr.errors.map(esc).join(" / ")}</p>` : ""}
+    ${over ? `<div style="border:2px solid #C2412D;border-radius:8px;padding:8px 12px;margin:14px 0;background:rgba(194,65,45,.05)">
+      <h4 style="margin:4px 0 6px;color:#C2412D">⚠ ${esc(label["지난 기한"] || "기한 지남")} ${over[1].length}건</h4>${tbl(head, over[1].map(openRow).join(""))}</div>` : ""}
+    ${rest.length ? rest.map(([g, l]) => `<h4 style="margin:16px 0 6px"><span class="pill ${color[g] || "new"}">${esc(label[g] || g)}</span> ${l.length}건</h4>${tbl(head, l.map(openRow).join(""))}`).join("")
+      : (over ? "" : '<p class="empty">남은 할 일이 없습니다.</p>')}
+    ${hold.length ? `<h4 style="margin:22px 0 6px"><span class="pill sim">보류</span> ${hold.length}건 <span class="note" style="font-weight:400">— 기한을 정해 할 일로 되돌리거나 삭제합니다</span></h4>
+      ${tbl('<thead><tr><th>중요도</th><th>원래 기한</th><th>할 일</th><th>시킨 사람</th><th>어떻게</th><th></th></tr></thead>', hold.map(holdRow).join(""))}` : ""}
+    ${days.length ? `<h4 style="margin:22px 0 6px"><span class="pill made">완료</span> 날짜별 (최근 30일 ${days.reduce((n, x) => n + x.items.length, 0)}건)</h4>
+      ${days.map((x, i) => `<details${i < 3 ? " open" : ""} style="margin:4px 0"><summary><b>${esc(dd(x.date))}</b> · ${x.items.length}건</summary>
+        ${tbl('<thead><tr><th>중요도</th><th>할 일</th><th>완료</th><th></th></tr></thead>', x.items.map(closedRow).join(""))}</details>`).join("")}` : ""}
+    ${notmine.length ? `<details style="margin-top:12px"><summary>내 일 아님 (최근 30일 ${notmine.length}건)</summary>
+      ${tbl('<thead><tr><th>중요도</th><th>할 일</th><th>표시</th><th></th></tr></thead>', notmine.map(closedRow).join(""))}</details>` : ""}`;
+}
+$("result").addEventListener("click", async e => {
+  const doc = e.target.closest("[data-mtdoc]");
+  if (doc && !busy) {
+    busy = true; doc.disabled = true;
+    const r = await api("/api/run", { bot: bot.id, action: "save_now", params: {} }).catch(() => ({ ok: false, text: "서버 연결 실패" }));
+    busy = false; doc.disabled = false;
+    doc.textContent = r.ok ? "저장·열기 완료" : "저장 실패";
+    return;
+  }
+  const b = e.target.closest("[data-mt]");
+  if (!b || busy) return;
+  const id = b.dataset.mt, params = { id, status: b.dataset.st };
+  if (b.dataset.needDue) {
+    const inp = $("result").querySelector(`[data-due-for="${CSS.escape(id)}"]`);
+    if (!inp || !inp.value) { if (inp) { inp.style.outline = "2px solid #C2412D"; inp.focus(); } return; }
+    params.due = inp.value;
+    const sel = $("result").querySelector(`[data-pri-for="${CSS.escape(id)}"]`);
+    if (sel) params.priority = sel.value;
+  }
+  if (params.status === "deleted" && !confirm("이 보류 항목을 삭제할까요? (목록에서 완전히 빠집니다)")) return;
+  busy = true; b.disabled = true;
+  const res = await api("/api/run", { bot: bot.id, action: "mark", params }).catch(() => ({ ok: false, text: "서버 연결 실패" }));
+  busy = false; showResult(res);
+});
+
+// 제품별 진행상황: 제품(행) × 단계(열) 표. 칸·제품을 눌러 직접 입력, Jira 불러오기/채우기
+let ps = null, psHideDone = false;
+try { psHideDone = localStorage.getItem("hub.ps.hideDone") === "1"; } catch (e) {}
+const psMD = s => s ? s.slice(5, 10).replace("-", "/") : "";
+function psProgress(p) {
+  const st = ps.stages.filter(s => ((p.cells || {})[s.id] || {}).status !== "해당없음");
+  const done = st.filter(s => ((p.cells || {})[s.id] || {}).status === "완료").length;
+  return [done, st.length];
+}
+function psNext(p) {  // 다음 할 단계: 완료·해당없음이 아닌 첫 단계
+  return ps.stages.find(s => !["완료", "해당없음"].includes(((p.cells || {})[s.id] || {}).status));
+}
+function renderPs(d) {
+  ps = d;
+  const groups = [];
+  d.stages.forEach(s => { const g = groups[groups.length - 1]; g && g.name === s.group ? g.n++ : groups.push({ name: s.group, n: 1 }); });
+  const list = d.products.filter(p => !(psHideDone && p.done));
+  const cell = (p, s) => {
+    const c = (p.cells || {})[s.id] || {}, st = c.status || "미착수";
+    const tip = [s.label, st, c.date, c.memo, c.src === "Jira" ? "(Jira에서 채움)" : ""].filter(Boolean).join(" · ");
+    return `<td><button type="button" class="pcell" data-psc="${esc(p.id)}" data-stage="${esc(s.id)}" title="${esc(tip)}">
+      <span class="pill st-${esc(st)}">${esc(st === "미착수" ? "–" : st)}</span>${c.date ? `<small>${esc(psMD(c.date))}</small>` : ""}${c.memo || c.link ? `<span class="dot">${c.src === "Jira" ? "J" : "✎"}</span>` : ""}</button></td>`;
+  };
+  const row = (p, i) => {
+    const [dn, tot] = psProgress(p), nx = psNext(p), pct = tot ? Math.round(dn / tot * 100) : 0;
+    return `<tr class="${p.done ? "pdone" : ""}"><td class="pname">
+      <b>${esc(p.name)}</b><span class="muted">${esc(p.models || "모델명 미입력")}${p.region ? " · " + esc(p.region) : ""}</span>
+      ${p.epic ? `<span class="muted"><a href="https://jira.coway.com/browse/${esc(p.epic)}" target="_blank" rel="noopener">${esc(p.epic)}</a></span>` : ""}
+      <div class="pprog"><div class="gauge"><i style="width:${pct}%"></i></div>${dn}/${tot}${p.done ? " · 종료" : nx ? " · 다음: " + esc(nx.label) : ""}</div>
+      <div class="pact" style="position:absolute;top:4px;right:4px;margin:0"><button class="ibtn" type="button" data-psedit="${esc(p.id)}" title="제품 정보 수정" aria-label="${esc(p.name)} 정보 수정">✎</button>
+        <button class="ibtn" type="button" data-psmove="${esc(p.id)}" data-step="-1" title="위로" aria-label="위로"${i === 0 ? " disabled" : ""}>▲</button>
+        <button class="ibtn" type="button" data-psmove="${esc(p.id)}" data-step="1" title="아래로" aria-label="아래로"${i === list.length - 1 ? " disabled" : ""}>▼</button></div></td>
+      ${d.stages.map(s => cell(p, s)).join("")}
+      <td style="min-width:160px;max-width:240px;font-size:12px;white-space:pre-line">${esc(p.note || "")}</td></tr>`;
+  };
+  const legend = d.statuses.map(s => `<span class="pill st-${esc(s)}">${esc(s === "미착수" ? "– 미착수" : s)}</span>`).join("");
+  return `<div class="psbar">
+      <button class="btn primary" type="button" data-psnew="1">+ 제품 추가</button>
+      <button class="btn" type="button" data-psjira="import_jira" title="Jira에서 내가 담당인 진행 중 프로젝트(큰틀) 에픽을 제품으로 추가합니다">Jira에서 내 제품 불러오기</button>
+      <button class="btn" type="button" data-psjira="jira_fill" title="에픽 하위 문서 제목·상태로 빈칸만 채웁니다. 직접 입력한 칸은 그대로 둡니다">Jira 하위 문서로 빈칸 채우기</button>
+      <span class="sp"></span>
+      <label class="check" style="font-size:13px"><input type="checkbox" data-pshide="1"${psHideDone ? " checked" : ""}>종료된 제품 숨기기</label>
+      <span id="psmsg" class="status" hidden></span></div>
+    <div class="pslegend">${legend}<span>· 칸을 누르면 상태·날짜·메모·링크 입력 · <b>✎</b> 직접 입력 메모 · <b>J</b> Jira에서 채움</span></div>
+    ${list.length ? `<div class="psmx"><table>
+      <thead><tr><th class="pname" rowspan="2">제품 / 모델</th>${groups.map(g => `<th colspan="${g.n}">${esc(g.name)}</th>`).join("")}<th rowspan="2">비고</th></tr>
+      <tr>${d.stages.map(s => { const m = s.label.match(/^사양 전달 · (.+)$/); return `<th title="${esc(s.help || s.label)}">${m ? `<small>사양 전달</small>${esc(m[1])}` : esc(s.label)}</th>`; }).join("")}</tr></thead>
+      <tbody>${list.map(row).join("")}</tbody></table></div>`
+      : `<p class="empty">${d.products.length ? "표시할 제품이 없습니다 (종료된 제품 숨김)." : "아직 등록한 제품이 없습니다. [+ 제품 추가] 또는 [Jira에서 내 제품 불러오기]로 시작하세요."}</p>`}
+    <p class="note">${d.updated ? `마지막 수정 ${esc(d.updated)}` : ""}${d.jira_at ? ` · Jira 채우기 ${esc(d.jira_at)}` : ""}</p>`;
+}
+function psMsg(kind, text) { const m = $("psmsg"); if (m) { m.hidden = !text; m.className = "status " + kind; m.textContent = text; } }
+async function psCall(act, params) {
+  if (busy) { psMsg("bad", "다른 기능이 실행 중입니다"); return null; }
+  busy = true; psMsg("run", act.startsWith("jira") || act === "import_jira" ? "Jira 확인 중…" : "저장 중…");
+  const r = await api("/api/run", { bot: "product-status", action: act, params }).catch(() => ({ ok: false, text: "서버 연결 실패" }));
+  busy = false;
+  if (r.ok && r.view === "product_status") { showResult(r); if (!r.quiet) loadHistory(); }
+  else psMsg("bad", r.text || "오류");
+  return r;
+}
+function psDialog(html) { const g = $("psdlg"); g.innerHTML = html; g.showModal(); const f = g.querySelector("input:not([type=radio]),textarea"); if (f) f.focus(); }
+function psEditProduct(p) {
+  p = p || { name: "", models: "", region: "국내향", epic: "", note: "" };
+  psDialog(`<form method="dialog" data-psform="product"><input type="hidden" name="id" value="${esc(p.id || "")}">
+    <div class="dh"><b id="psdlgt">${p.id ? "제품 정보 수정" : "제품 추가"}</b><p>모델명이 여러 개면 쉼표로 구분합니다.</p></div>
+    <div class="db">
+      <div class="row"><label for="ps_name">제품명<span class="req">*</span></label><input type="text" id="ps_name" name="name" value="${esc(p.name)}" required></div>
+      <div class="row"><label for="ps_models">모델명</label><input type="text" id="ps_models" name="models" value="${esc(p.models || "")}" placeholder="예: BAS50-A, BAS50-B"></div>
+      <div class="row"><label for="ps_region">향지</label><select id="ps_region" name="region">${["국내향", "해외향"].map(o => `<option${o === p.region ? " selected" : ""}>${o}</option>`).join("")}</select></div>
+      <div class="row"><label for="ps_epic">Jira 에픽 키 (선택)</label><input type="text" id="ps_epic" name="epic" value="${esc(p.epic || "")}" placeholder="IOCARERENEW2023-2492"><div class="help">넣어 두면 [Jira 하위 문서로 빈칸 채우기]에 사용됩니다.</div></div>
+      <div class="row"><label for="ps_note">비고</label><textarea id="ps_note" name="note" style="min-height:70px;font-family:inherit">${esc(p.note || "")}</textarea></div>
+      ${p.id ? `<label class="check"><input type="checkbox" name="done"${p.done ? " checked" : ""}>종료된 제품 (출시 완료 등 — 흐리게 표시)</label>` : ""}
+    </div>
+    <div class="df">${p.id ? `<button class="btn" type="button" data-psdel="${esc(p.id)}" style="color:var(--bad)">삭제</button>` : ""}<span class="sp"></span>
+      <button class="btn" type="button" data-psclose="1">취소</button><button class="btn primary" type="submit">저장</button></div></form>`);
+}
+function psEditCell(p, s) {
+  const c = (p.cells || {})[s.id] || {}, cur = c.status || "미착수";
+  psDialog(`<form method="dialog" data-psform="cell"><input type="hidden" name="id" value="${esc(p.id)}"><input type="hidden" name="stage" value="${esc(s.id)}">
+    <div class="dh"><b id="psdlgt">${esc(p.name)} · ${esc(s.label)}</b><p>${esc(s.help || "")}${c.at ? `${s.help ? " · " : ""}마지막 수정 ${esc(c.at)} (${esc(c.src || "직접")})` : ""}</p></div>
+    <div class="db">
+      <div class="row"><span class="lb">상태</span><div class="stbtns">${ps.statuses.map(o => `<label><input type="radio" name="status" value="${esc(o)}"${o === cur ? " checked" : ""}><span class="pill st-${esc(o)}">${esc(o)}</span></label>`).join("")}</div></div>
+      <div class="row"><label for="ps_date">날짜 (완료일 또는 예정일)</label><input type="date" id="ps_date" name="date" value="${esc(c.date || "")}"></div>
+      <div class="row"><label for="ps_memo">메모</label><textarea id="ps_memo" name="memo" style="min-height:80px;font-family:inherit" placeholder="담당자, 진행 내용, 이슈 등">${esc(c.memo || "")}</textarea></div>
+      <div class="row"><label for="ps_link">링크 (문서·위키·Figma·Jira 주소)</label><input type="text" id="ps_link" name="link" value="${esc(c.link || "")}" placeholder="https://">
+        ${c.link ? `<div class="help"><a href="${esc(c.link)}" target="_blank" rel="noopener">링크 열기</a></div>` : ""}</div>
+      ${c.src === "Jira" ? `<div class="help">Jira에서 채운 칸입니다. 저장하면 '직접 입력'으로 바뀌어 이후 Jira 채우기가 덮어쓰지 않습니다.</div>` : ""}
+    </div>
+    <div class="df"><button class="btn" type="button" data-psclear="1">비우기</button><span class="sp"></span>
+      <button class="btn" type="button" data-psclose="1">취소</button><button class="btn primary" type="submit">저장</button></div></form>`);
+}
+$("result").addEventListener("click", async e => {
+  const t = e.target.closest("[data-psc],[data-psedit],[data-psnew],[data-psmove],[data-psjira]");
+  if (!t || !ps) return;
+  if (t.dataset.psnew) return psEditProduct();
+  if (t.dataset.psedit) return psEditProduct(ps.products.find(p => p.id === t.dataset.psedit));
+  if (t.dataset.psc) return psEditCell(ps.products.find(p => p.id === t.dataset.psc), ps.stages.find(s => s.id === t.dataset.stage));
+  if (t.dataset.psmove) return psCall("move_product", { id: t.dataset.psmove, step: +t.dataset.step });
+  if (t.dataset.psjira) { t.disabled = true; await psCall(t.dataset.psjira, {}); t.disabled = false; }
+});
+$("result").addEventListener("change", e => {
+  if (!e.target.dataset.pshide) return;
+  psHideDone = e.target.checked;
+  try { localStorage.setItem("hub.ps.hideDone", psHideDone ? "1" : "0"); } catch (err) {}
+  showResult({ ok: true, view: "product_status", data: ps, quiet: true }, true);
+});
+$("psdlg").addEventListener("click", async e => {
+  const t = e.target;
+  if (t === $("psdlg") || t.dataset.psclose) return $("psdlg").close();
+  if (t.dataset.psclear) { const f = t.closest("form"); f.querySelectorAll("input[type=date],input[type=text],textarea").forEach(x => x.value = ""); f.querySelector('input[value="미착수"]').checked = true; return; }
+  if (t.dataset.psdel) {
+    const p = ps.products.find(x => x.id === t.dataset.psdel);
+    if (!confirm(`'${p ? p.name : ""}' 제품과 입력한 진행 상황을 모두 삭제할까요?`)) return;
+    $("psdlg").close(); psCall("delete_product", { id: t.dataset.psdel });
+  }
+});
+$("psdlg").addEventListener("submit", async e => {
+  const f = e.target, kind = f.dataset.psform;
+  if (!kind) return;
+  e.preventDefault();
+  const v = Object.fromEntries(new FormData(f));
+  const el = n => f.querySelector(`[name="${n}"]`);
+  if (kind === "product") { if (!v.name.trim()) { el("name").focus(); return; } v.done = !!el("done") && el("done").checked; }
+  const r = await psCall(kind === "product" ? "save_product" : "save_cell", v);
+  if (r && r.ok) $("psdlg").close();
+  else {  // 오류는 창 안에 보여 준다 (뒤의 화면은 가려져 있으므로)
+    let m = f.querySelector(".df .status");
+    if (!m) { m = document.createElement("span"); m.className = "status bad"; f.querySelector(".df .sp").before(m); }
+    m.textContent = (r && r.text) || "저장하지 못했습니다";
+  }
+});
+
+// Figma UX 기획봇: 설계안 확인 → 수정 요청(새 버전) → Figma에 그리기
+let ux = null;
+const uxList = (t, a) => a && a.length ? `<h5>${t}</h5><ol>${a.map(x => `<li>${esc(x)}</li>`).join("")}</ol>` : "";
+function renderUx(d) {
+  ux = d;
+  const doc = d.doc, ver = doc.versions[doc.versions.length - 1], p = ver.plan;
+  const figLink = (k, n) => `https://www.figma.com/design/${encodeURIComponent(k)}/?node-id=${encodeURIComponent(String(n).replace(":", "-"))}`;
+  const last = doc.draws.length ? doc.draws[doc.draws.length - 1] : null;
+  const info = [`설계안 <b>v${ver.v}</b> (${esc(ver.at)})`, `화면 <b>${p.screens.length}개</b>`, `그릴 곳 <b>${esc(d.page)}</b> 페이지`,
+    ver.sec ? `작성 ${Math.max(1, Math.round(ver.sec / 60))}분` : "", ver.cost ? `약 $${Number(ver.cost).toFixed(2)}` : ""].filter(Boolean);
+  const drawn = last ? (last.error
+      ? `<p class="status bad">Figma 그리기 실패 (${esc(last.at)}): ${esc(last.error)}</p>`
+      : `<p class="status ok">v${last.v} Figma에 그림 (${esc(last.at)}, ${Math.max(1, Math.round(last.sec / 60))}분) — <a href="${esc(last.url)}" target="_blank" rel="noopener">Figma에서 보기</a></p>`)
+    + (last.notes && last.notes.length ? `<div class="uxbox">${uxList("그리면서 남긴 메모", last.notes)}</div>` : "") : "";
+  return `<div class="planmeta">${info.map(x => `<span>${x}</span>`).join("")}</div>${drawn}
+    <div class="actions" style="margin-bottom:4px"><button class="btn danger" type="button" data-ux-draw>${last && !last.error ? "Figma에 다시 그리기" : "Figma에 그리기"}</button>
+      <span class="note" style="margin:0">${esc(doc.title)}</span></div>
+    <div class="uxbox"><b>요약</b><p style="margin:4px 0">${esc(p.summary || "")}</p>${p.flow ? `<p style="margin:4px 0"><b>흐름</b> ${esc(p.flow)}</p>` : ""}
+      ${uxList("가정한 것", p.assumptions)}${uxList("기획자 확인 필요", p.questions)}</div>
+    <div class="uxgrid">${p.screens.map(s => `<div class="uxs">
+      <h4>${esc(s.no)}. ${esc(s.name)} ${s.type ? `<span class="pill have">${esc(s.type)}</span>` : ""}</h4>
+      <div class="note" style="margin:0">${esc(s.purpose || "")}</div>
+      ${s.base && s.base.node_id ? `<h5>기준 프레임</h5><a href="${figLink(s.base.file_key || doc.target, s.base.node_id)}" target="_blank" rel="noopener">${esc(s.base.node_id)}</a> <span class="note">${esc(s.base.why || "")}</span>` : `<h5>기준 프레임</h5><span class="note">없음 — 새로 조립</span>`}
+      ${uxList("구성", s.layout)}${uxList("바꿀 점", s.changes)}${uxList("상태", s.states)}${uxList("디스크립션(정책)", s.policy)}</div>`).join("")}</div>
+    <div class="uxbox"><b>수정 요청</b> <span class="note">고칠 점을 적으면 새 버전(v${ver.v + 1})을 만듭니다</span>
+      <textarea id="uxfb" placeholder="예) 03 바텀시트에 '전체 선택' 추가, 공유 완료는 토스트 대신 팝업으로"></textarea>
+      <div class="actions" style="margin-top:8px"><button class="btn primary" type="button" data-ux-revise>설계안 수정</button></div></div>
+    <details><summary>요청사항·읽은 자료</summary><p style="white-space:pre-wrap">${esc(doc.request)}</p><ul class="help">${doc.sources.map(x => `<li>${esc(x)}</li>`).join("")}</ul>
+      ${doc.versions.length > 1 ? `<h5>수정 이력</h5><ol>${doc.versions.slice(1).map(v => `<li>v${v.v} (${esc(v.at)}): ${esc(v.feedback)}</li>`).join("")}</ol>` : ""}</details>`;
+}
+function renderUxList(list) {
+  if (!list.length) return '<p class="empty">아직 만든 설계안이 없습니다. [설계안 만들기] 탭에서 시작하세요.</p>';
+  return `<div class="tbl"><table><thead><tr><th>만든 시각</th><th>작업</th><th>버전</th><th>화면</th><th>Figma</th><th></th></tr></thead><tbody>${list.map(x => `<tr>
+    <td class="nowrap">${esc(x.created)}</td><td>${esc(x.title)}</td><td>v${x.v}</td><td>${x.screens}개</td>
+    <td>${x.drawn ? `<span class="pill made">그림</span> <a href="${esc(x.drawn)}" target="_blank" rel="noopener">보기</a>` : '<span class="pill new">설계안</span>'}</td>
+    <td><button class="btn" type="button" data-ux-open="${esc(x.name)}">열기</button></td></tr>`).join("")}</tbody></table></div>`;
+}
+$("result").addEventListener("click", async e => {
+  const o = e.target.closest("[data-ux-open]"), rv = e.target.closest("[data-ux-revise]"), dr = e.target.closest("[data-ux-draw]");
+  if (!o && !rv && !dr) return;
+  if (busy) return;
+  if (o) {
+    busy = true;
+    const res = await api("/api/run", { bot: bot.id, action: "open", params: { name: o.dataset.uxOpen } }).catch(() => ({ ok: false, text: "서버 연결 실패" }));
+    busy = false; showResult(res); return;
+  }
+  if (rv) {
+    const fb = $("uxfb").value.trim();
+    if (!fb) { $("uxfb").focus(); return; }
+    return runAction("revise", { name: ux.doc.name, feedback: fb }, "plan");
+  }
+  const v = ux.doc.versions.length;
+  if (!confirm(`설계안 v${v}을(를) Figma 원본 파일의 '${ux.page}' 페이지에 그립니다.\n다른 페이지는 건드리지 않고, 이 페이지에 새 섹션을 만듭니다. (10~30분 걸릴 수 있습니다)\n\n계속할까요?`)) return;
+  runAction("draw", { name: ux.doc.name }, "plan");
 });
 
 // QA 대응: 찾은 이슈/문의 고르기 → 답변 만들기(엑셀·메일) 또는 같은 조건으로 예약
@@ -549,7 +1221,7 @@ function renderSchedules(list) {
     <td>${esc(j.when_text)}</td><td class="nowrap">${esc(j.next_run || "끝남")}</td>
     <td>${j.last_run ? `${esc(j.last_run)}<br><small class="muted">${esc(j.last_result || "")}</small>` : "-"}</td><td>${esc(j.to)}</td>
     <td class="nowrap"><button class="btn" type="button" data-qa-now="${esc(j.id)}">지금 실행</button> <button class="btn" type="button" data-qa-del="${esc(j.id)}">삭제</button></td></tr>`).join("")}</tbody></table></div>
-    <p class="note">PC가 켜져 있으면 업무 봇 화면을 닫아도 10분 간격으로 확인해 실행합니다. 꺼져 있던 동안 지난 예약은 켜진 뒤 한 번 실행합니다.</p>`;
+    <p class="note">PC가 켜져 있으면 IoT업무봇 화면을 닫아도 10분 간격으로 확인해 실행합니다. 꺼져 있던 동안 지난 예약은 켜진 뒤 한 번 실행합니다.</p>`;
 }
 $("result").addEventListener("change", e => {
   if (e.target.id === "qa_mode") return syncSched();
@@ -587,24 +1259,60 @@ $("result").addEventListener("click", async e => {
   loadHistory();
 });
 
+async function loadLimits() {  // 상단 바: 계정 전체 5시간·주간 한도
+  const r = await api("/api/limits").catch(() => null);
+  const cards = (r && r.data && r.data.cards || []).filter(c => c.gauge);
+  $("limits").innerHTML = cards.map(c => {
+    const v = Number(c.value) || 0, lv = v >= 90 ? "crit" : v >= 70 ? "warn" : "";
+    return `<div class="lim" title="${esc(c.sub || "")}">${esc(c.label.replace(" 한도", ""))} <b>${esc(c.value)}%</b><span class="bar"><i class="${lv}" style="width:${Math.min(v, 100)}%"></i></span><span class="sub">${esc((c.sub || "").replace("리셋 ", "↻ "))}</span></div>`;
+  }).join("");
+}
 async function loadHistory() {
   const h = await api("/api/history").catch(() => []);
+  $("histn").textContent = h.length ? h.length + "건" : "";
   $("hist").innerHTML = h.length ? h.map(r => `<div><time>${new Date(r.t * 1000).toLocaleString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })}</time>
     <span>${r.ok ? "✅" : "⚠️"} ${esc(r.bot)} · ${esc(r.action)} <em>${esc(r.summary)}</em></span><em>${r.sec}초</em></div>`).join("")
     : '<p class="empty">아직 실행 기록이 없습니다.</p>';
 }
 
 ["bots", "botsys"].forEach(n => $(n).addEventListener("click", e => { const b = e.target.closest(".bot"); if (b) selectBot(b.dataset.id); }));
+// 왼쪽 메뉴 접기/펴기 (브라우저에 기억, Ctrl+B)
+function setNav(mini) {
+  document.querySelector(".app").classList.toggle("mini", mini);
+  document.body.classList.toggle("navmini", mini);
+  const t = $("navtoggle");
+  t.setAttribute("aria-expanded", String(!mini));
+  t.setAttribute("aria-label", mini ? "왼쪽 메뉴 펴기" : "왼쪽 메뉴 접기");
+  t.title = mini ? "메뉴 펴기 (Ctrl+B)" : "메뉴 접기 (Ctrl+B)";
+  try { localStorage.setItem("hub.navMini", mini ? "1" : "0"); } catch (e) {}
+}
+try { if (localStorage.getItem("hub.navMini") === "1") setNav(true); } catch (e) {}
+$("navtoggle").addEventListener("click", () => setNav(!document.querySelector(".app").classList.contains("mini")));
+document.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "b" && !(e.target.closest && e.target.closest("input,textarea,select,[contenteditable]"))) {
+    e.preventDefault(); setNav(!document.querySelector(".app").classList.contains("mini"));
+  }
+});
+$("bots").addEventListener("click", e => {
+  const g = e.target.closest("[data-grp]");
+  if (!g) return;
+  const name = g.dataset.grp, box = g.closest(".grp");
+  if (box.querySelector('.bot[aria-current="true"]')) return;  // 지금 보고 있는 메뉴의 묶음은 접지 않는다
+  closedGroups = box.classList.toggle("closed") ? [...new Set([...closedGroups, name])] : closedGroups.filter(x => x !== name);
+  g.setAttribute("aria-expanded", !box.classList.contains("closed"));
+  try { localStorage.setItem("hub.closed", JSON.stringify(closedGroups)); } catch (e) {}
+});
 $("tabs").addEventListener("click", e => { const t = e.target.closest(".tab"); if (t) selectBot(bot.id, t.dataset.a); });
 
 (async () => {
   try { bots = await api("/api/bots"); }
-  catch (e) { $("title").textContent = "업무 봇 서버에 연결할 수 없습니다"; $("desc").textContent = "터미널에서 python3 hub.py 를 실행하세요."; return; }
+  catch (e) { $("title").textContent = "IoT업무봇 서버에 연결할 수 없습니다"; $("desc").textContent = "터미널에서 python3 hub.py 를 실행하세요."; return; }
   if (!Array.isArray(bots)) { $("title").textContent = "페이지를 새로 고쳐 주세요"; return; }
   let last = ""; try { last = localStorage.getItem("hub.last") || ""; } catch (e) {}
   const [b, a] = last.split("/");
   selectBot(b, a);
   loadHistory();
+  loadLimits(); setInterval(loadLimits, 5 * 60e3);
 })();
 </script>
 </body>

@@ -1,0 +1,43 @@
+{
+  "statuses": ["미착수", "예정", "진행중", "완료", "보류", "해당없음"],
+  "stages": [
+    {"id": "kickoff", "label": "킥오프", "group": "착수", "jira": []},
+    {"id": "dpp", "label": "DPP", "group": "착수", "jira": ["DPP"]},
+    {"id": "launch_doc", "label": "상품화 착수서", "group": "착수", "help": "상품화 착수서 IoT 파트 작성", "jira": ["상품화 착수서", "착수서"]},
+
+    {"id": "svc_def", "label": "IoT서비스 기능정의", "group": "IoT기획", "help": "상품기획 기능정의서의 IoT 요구사항 검토·신규 IoT 기능 가능 여부 회신", "jira": ["IoT서비스 기능정의", "서비스 기능정의", "상품기획 기능정의서", "신규 IoT 기능"]},
+    {"id": "model_info", "label": "모델별 기본정보", "group": "IoT기획", "help": "모델별 기본 정보 및 기능정의 시트 등재 (프로젝트코드·모델명·자재코드·판매/관리 정책·통신 모듈)", "jira": ["제품 기본 정보", "기본정보", "기준정보 등록"]},
+    {"id": "pop", "label": "POP 코드 요청", "group": "IoT기획", "help": "POP 코드 생성·등록 요청 (IoT플랫폼개발팀)", "jira": ["POP 코드", "POP코드", "pop code"]},
+    {"id": "iot_def", "label": "IoT 기능정의서", "group": "IoT기획", "help": "CW_IoCare 제품 기능정의서 (프로토콜 기반 기능·제어 정의)", "jira": ["제품 기능 정의", "IoT 기능정의", "기능정의서"]},
+    {"id": "notify_def", "label": "알림 정의", "group": "IoT기획", "jira": ["알림 정의"]},
+    {"id": "diag_def", "label": "스마트진단 정의", "group": "IoT기획", "jira": ["스마트진단 정의"]},
+    {"id": "consum_def", "label": "소모품 정의", "group": "IoT기획", "jira": ["소모품 정의"]},
+    {"id": "routine_def", "label": "루틴(자동화) 정의", "group": "IoT기획", "jira": ["루틴", "자동화) 정의"]},
+    {"id": "trouble_def", "label": "문제해결 가이드", "group": "IoT기획", "jira": ["문제해결 가이드", "문제 해결 가이드"]},
+    {"id": "app_guide", "label": "고객 앱 서비스 가이드", "group": "IoT기획", "jira": ["고객 앱 서비스 가이드", "서비스 가이드"]},
+    {"id": "figma", "label": "Figma 화면기획서", "group": "IoT기획", "help": "IoCare+ 화면 기획 (메가존 화면설계 포함)", "jira": ["화면 기획", "화면설계"]},
+    {"id": "i18n", "label": "다국어·향지", "group": "IoT기획", "help": "해외향: 통합회원 향지 추가·현지어 적용, 언어 변경 범위, 다국어 번역 시트", "jira": ["통합회원", "언어 변경", "다국어"]},
+    {"id": "legal", "label": "개인정보·약관·법무", "group": "IoT기획", "help": "해외향 개인정보보호법·약관 검토, 포토모드 등 법무 검토, 민감정보 동의", "jira": ["개인정보", "약관", "법무"]},
+    {"id": "spec_pm", "label": "사양 전달 · 상품기획팀", "group": "IoT기획", "help": "Living/Air 상품기획팀 — IoT 기능 검토 의견·확정 사양", "jira": []},
+    {"id": "spec_hw", "label": "사양 전달 · 제품 개발·전장", "group": "IoT기획", "help": "제품 개발PM·전장/임베디드 — 프로토콜·통신모듈·제품 GUI(UI디자인팀) 연계", "jira": []},
+    {"id": "spec_platform", "label": "사양 전달 · IoT플랫폼개발팀", "group": "IoT기획", "help": "POP·프로토콜·IMS·제품 연동", "jira": []},
+    {"id": "spec_service", "label": "사양 전달 · IoT서비스개발팀", "group": "IoT기획", "help": "알림·리포트·3rd party·인공지능 서비스 서버", "jira": []},
+    {"id": "spec_app", "label": "사양 전달 · IoT앱·FE개발팀", "group": "IoT기획", "help": "IoT앱개발팀(네이티브·BLE·스토어) · 프론트엔드개발팀(제품 화면)", "jira": []},
+    {"id": "spec_design", "label": "사양 전달 · 디자인·퍼블리싱", "group": "IoT기획", "help": "메가존·파트너 — 화면설계·UI 디자인·퍼블리싱", "jira": []},
+    {"id": "spec_cs", "label": "사양 전달 · CS·서비스 운영", "group": "IoT기획", "help": "고객서비스기획·고객대응전략·기술지원 (관제·코디앱·서비스매니저 앱·상담)", "jira": []},
+
+    {"id": "fw", "label": "제품 F/W 연동", "group": "개발", "help": "전장/임베디드 — 통신모듈·프로토콜 구현 (Tuya ODM은 DP 사양)", "jira": ["DP 사양", "프로토콜 수정", "프로토콜 변경"]},
+    {"id": "platform", "label": "플랫폼·IMS", "group": "개발", "help": "IoT플랫폼개발팀 — 프로토콜·POP 등록, IMS 기준정보·소모품·문제해결 세팅, 제품 연동(시료 서버 등록)", "jira": ["IMS", "제품연동", "시료 서버 등록", "[플랫폼]"]},
+    {"id": "service", "label": "서비스 서버", "group": "개발", "help": "IoT서비스개발팀 — 알림/푸시·리포트 배치·3rd party(알렉사 등)·인공지능 서비스", "jira": ["[서버]", "[알림]", "[푸시]", "써드파티", "3rd Party", "인공지능", "IoT서비스서버"]},
+    {"id": "app", "label": "앱 (네이티브)", "group": "개발", "help": "IoT앱개발팀 — BLE 연결·리포트 화면·스토어 배포", "jira": ["앱 개발", "리포트 화면 개발", "스토어"]},
+    {"id": "fe", "label": "제품 화면 (FE)", "group": "개발", "help": "프론트엔드개발팀 — 제품 상세·제어 화면", "jira": ["[FE]"]},
+    {"id": "design", "label": "디자인·퍼블리싱", "group": "개발", "help": "메가존·파트너 — UI 디자인·퍼블리싱", "jira": ["[디자인]", "UI 디자인", "퍼블리싱"]},
+
+    {"id": "itg", "label": "인증용 앱(ITG)", "group": "검증", "jira": ["인증용 앱", "ITG 앱"]},
+    {"id": "iot_verify", "label": "IoT 검증·LPP 단테", "group": "검증", "help": "IoT플랫폼개발팀 IoT 검증 · LPP 사전/단위 테스트", "jira": ["IoT 검증", "LPP 사전 테스트", "LPP 단위"]},
+    {"id": "qa", "label": "QA", "group": "검증", "jira": ["QA"]},
+    {"id": "int_test", "label": "통합테스트", "group": "검증", "jira": ["통합테스트"]},
+    {"id": "mass", "label": "양산인정", "group": "출시", "jira": ["양산"]},
+    {"id": "release", "label": "출시·운영 배포", "group": "출시", "jira": ["출시", "운영 배포"]}
+  ]
+}

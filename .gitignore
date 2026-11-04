@@ -9,3 +9,8 @@ Thumbs.db
 *.token
 token
 *secret*.json
+
+# 토큰 리포트 봇 사본이 PC마다 만드는 파일
+bots/daily-summary/export/
+bots/daily-summary/summaries.json
+*.bak*

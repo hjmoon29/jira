@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# 업무 봇 ↔ healthcare.py 연결. 입력: argv[1]=기능, stdin=화면 입력(JSON) / 출력: JSON
+# IoT업무봇 ↔ healthcare.py 연결. 입력: argv[1]=기능, stdin=화면 입력(JSON) / 출력: JSON
 import datetime as dt
 import json, os, sys
 

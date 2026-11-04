@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""업무 봇: 여러 업무 봇을 한 화면에서 실행하는 로컬 웹 프로그램.
+"""IoT업무봇: 여러 IoT업무봇을 한 화면에서 실행하는 로컬 웹 프로그램.
 
-실행: python3 hub.py (Windows: py -3 hub.py, 또는 업무봇 실행.bat) → 브라우저에서 http://127.0.0.1:8765 이 열린다.
+실행: python3 hub.py (Windows: py -3 hub.py, 또는 IoT업무봇 실행.bat) → 브라우저에서 http://127.0.0.1:8765 이 열린다.
 봇 추가: bots/<봇id>/bot.json (화면 정의) + adapter.py (실행) — README.md 참고.
 이 Mac 안에서만 열리며(127.0.0.1), 화면마다 발급한 키가 있어야 실행 요청을 받는다.
 """
@@ -47,7 +47,7 @@ def history(limit=30):
     return out
 
 
-def run(bot_id, action_id, params):
+def run(bot_id, action_id, params, log=True):
     bot = next((b for b in load_bots() if b["id"] == bot_id), None)
     action = bot and next((a for a in bot.get("actions", []) if a["id"] == action_id), None)
     if not action:
@@ -69,7 +69,7 @@ def run(bot_id, action_id, params):
     except subprocess.TimeoutExpired:
         res = {"ok": False, "text": f"시간 초과 ({action.get('timeout', 300)}초)"}
     res.setdefault("ok", True)
-    if res.get("quiet"):  # 화면 내부용 호출(자동완성 목록 등)은 실행 기록에 남기지 않음
+    if res.get("quiet") or not log:  # 화면 내부용 호출(자동완성 목록 등)은 실행 기록에 남기지 않음
         return res
     entry = {"t": int(t0), "bot": bot["name"], "action": action["label"], "ok": res["ok"],
              "sec": round(time.time() - t0, 1), "summary": res.get("summary") or (res.get("text") or "").strip().split("\n")[-1][:120]}
@@ -113,6 +113,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, load_bots())
         if self.path == "/api/history":
             return self.send(200, history())
+        if self.path == "/api/limits":  # 상단 바의 한도 표시 — 실행 기록에 남기지 않음
+            return self.send(200, run("daily-summary", "now", {}, log=False))
         self.send(404, {"ok": False, "text": "없는 경로"})
 
     def do_POST(self):
@@ -141,7 +143,7 @@ def main():
         webbrowser.open(f"http://127.0.0.1:{PORT}")
         return
     url = f"http://127.0.0.1:{PORT}"
-    print(f"업무 봇 실행 중 → {url}  (끝내려면 이 창에서 Ctrl+C)")
+    print(f"IoT업무봇(Beta) 실행 중 → {url}  (끝내려면 이 창에서 Ctrl+C)")
     if "--no-browser" not in sys.argv:
         threading.Timer(0.6, lambda: webbrowser.open(url)).start()
     try:

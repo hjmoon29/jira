@@ -1,31 +1,195 @@
 {
-  "name": "Jira 하위 문서 생성",
+  "name": "JIRA 자동 생성기",
   "icon": "📋",
   "order": 10,
   "group": "기획 업무",
-  "tagline": "에픽에 하위 문서 일괄 생성",
-  "description": "제품 프로젝트 문서(에픽)에 하위 문서를 만듭니다. 제목은 '[머리말] 제품명 문서 제목' 형식이고, 에픽에 이미 있는 문서는 건너뜁니다.",
+  "tagline": "새 제품 하위 문서 일괄 생성",
+  "description": "제품명과 향지(국내향·해외향)를 고르면 필요한 하위 문서 목록이 나옵니다. 만들 문서를 체크하고 생성하기를 누르면 프로젝트 문서(에픽)에 만듭니다. 제목은 '[머리말] 제품명 문서 제목' 형식이고, 이미 있는 문서는 건너뜁니다.",
   "actions": [
+    {
+      "id": "new_epic",
+      "label": "새 프로젝트 문서",
+      "button": "생성하기",
+      "timeout": 120,
+      "fields": [
+        {
+          "name": "product",
+          "label": "제품명 — 문서 제목에 들어감",
+          "type": "text",
+          "required": true,
+          "placeholder": "대만향 정수기",
+          "help": "제목 '[프로젝트][제품] 제품명 개발을 위한 IoT 기획' 으로 프로젝트 문서(에픽)를 만듭니다. 이슈 유형·우선순위·구성요소와 설명 틀(대상 제품·주요 결정 사항·전체 일정·기획 문서 표)은 IOCARERENEW2023-2597 과 같고, 담당자·보고자는 나입니다. 만든 뒤 제품으로 자동 등록되어 '새 제품 하위 문서' 탭에서 바로 쓸 수 있습니다."
+        }
+      ]
+    },
+    {
+      "id": "new",
+      "label": "새 제품 하위 문서",
+      "button": "생성하기",
+      "timeout": 180,
+      "options_action": "doc_options",
+      "options_on": [
+        "product",
+        "region"
+      ],
+      "extra": [
+        {
+          "button": "값 설정 (담당자·구성요소·레이블…)",
+          "dialog": "jira_values"
+        }
+      ],
+      "fields": [
+        {
+          "name": "product",
+          "label": "제품명 — 문서 제목에 들어감",
+          "type": "text",
+          "required": true,
+          "placeholder": "말레이시아향 아이콘3",
+          "suggest_action": "products",
+          "fill_action": "epic_info"
+        },
+        {
+          "name": "region",
+          "label": "향지",
+          "type": "radio",
+          "default": "국내향",
+          "options": [
+            {
+              "value": "국내향",
+              "label": "국내향"
+            },
+            {
+              "value": "해외향",
+              "label": "해외향"
+            }
+          ]
+        },
+        {
+          "name": "docs",
+          "label": "만들 하위 문서 — 생성할 문서만 체크",
+          "type": "multi",
+          "help": "향지에 맞는 기본 하위 문서 목록입니다 (설정에서 문서별 국내향·해외향 지정). 담당자·구성요소·레이블 등은 '값 설정'에서 확인·수정하세요 — 열지 않으면 담당자는 나, 나머지는 기준 에픽의 같은 문서 값으로 만듭니다."
+        },
+        {
+          "name": "epic",
+          "label": "프로젝트 문서(에픽) 키 — 비우면 제품명으로 찾음",
+          "type": "text",
+          "placeholder": "IOCARERENEW2023-0000",
+          "help": "등록된 제품이거나 그 제품명이 들어간 하위 문서가 이미 있으면 자동으로 찾습니다. 처음 만드는 제품은 에픽 키를 넣어 주세요."
+        },
+        {
+          "name": "values",
+          "type": "hidden",
+          "default": null
+        }
+      ]
+    },
     {
       "id": "create",
       "label": "직접 입력",
       "button": "하위 문서 생성",
       "timeout": 120,
       "fields": [
-        {"name": "product", "label": "제품명 — 제목에 들어감, 등록된 제품이면 아래 값이 자동으로 채워짐", "type": "text", "placeholder": "대만향 아이콘3", "suggest_action": "products", "fill_action": "epic_info"},
-        {"name": "epic", "label": "프로젝트 문서(에픽) 키", "type": "text", "required": true, "placeholder": "IOCARERENEW2023-2597", "fill_action": "epic_info",
-         "help": "입력하면 이 에픽의 기존 하위 문서와 같은 값(이슈 유형·우선순위·구성 요소·레이블·담당자)으로 아래 칸을 채웁니다. 채운 뒤 고쳐도 됩니다."},
-        {"name": "prefix", "label": "머리말", "type": "select", "options": ["[기획]", "[제품]", "(없음)"]},
-        {"name": "titles", "label": "요약(문서 제목) — 한 줄에 하나, 여러 줄이면 같은 값으로 여러 개 생성", "type": "textarea", "required": true,
-         "placeholder": "현지 인증 일정 정리\nDR3 체크리스트", "help": "실제 요약 = 머리말 + 제품명 + 문서 제목  예) [기획] 대만향 아이콘3 현지 인증 일정 정리"},
-        {"name": "issuetype", "label": "이슈 유형", "type": "select", "options": ["작업", "이야기", "버그", "새 기능", "개선"]},
-        {"name": "reporter", "label": "보고자 — 비우면 나", "type": "text", "placeholder": "이름 또는 이메일"},
-        {"name": "assignee", "label": "담당자", "type": "text", "placeholder": "이름 또는 이메일"},
-        {"name": "priority", "label": "우선순위", "type": "select", "options": ["블로커", "Highest", "High", "Medium", "Low", "Lowest", "사소함", "Urgent(P1)", "High(P2)", "Normal(P3)", "Low(P4)"]},
-        {"name": "components", "label": "구성 요소 — 쉼표로 구분", "type": "text", "placeholder": "기획"},
-        {"name": "labels", "label": "레이블 — 쉼표로 구분", "type": "text", "placeholder": "IoCare+, 정수기"},
-        {"name": "duedate", "label": "기한", "type": "date"},
-        {"name": "description", "label": "설명 (Jira 위키 문법)", "type": "textarea", "placeholder": "h3. 개요\n...\n\nh3. TODO\n * ..."}
+        {
+          "name": "product",
+          "label": "제품명 — 제목에 들어감, 등록된 제품이면 아래 값이 자동으로 채워짐",
+          "type": "text",
+          "placeholder": "대만향 아이콘3",
+          "suggest_action": "products",
+          "fill_action": "epic_info"
+        },
+        {
+          "name": "epic",
+          "label": "프로젝트 문서(에픽) 키",
+          "type": "text",
+          "required": true,
+          "placeholder": "IOCARERENEW2023-2597",
+          "fill_action": "epic_info",
+          "help": "입력하면 이 에픽의 기존 하위 문서와 같은 값(이슈 유형·우선순위·구성 요소·레이블·담당자)으로 아래 칸을 채웁니다. 채운 뒤 고쳐도 됩니다."
+        },
+        {
+          "name": "prefix",
+          "label": "머리말",
+          "type": "select",
+          "options": [
+            "[기획]",
+            "[제품]",
+            "(없음)"
+          ]
+        },
+        {
+          "name": "titles",
+          "label": "요약(문서 제목) — 한 줄에 하나, 여러 줄이면 같은 값으로 여러 개 생성",
+          "type": "textarea",
+          "required": true,
+          "placeholder": "현지 인증 일정 정리\nDR3 체크리스트",
+          "help": "실제 요약 = 머리말 + 제품명 + 문서 제목  예) [기획] 대만향 아이콘3 현지 인증 일정 정리"
+        },
+        {
+          "name": "issuetype",
+          "label": "이슈 유형",
+          "type": "select",
+          "options": [
+            "작업",
+            "이야기",
+            "버그",
+            "새 기능",
+            "개선"
+          ]
+        },
+        {
+          "name": "reporter",
+          "label": "보고자 — 비우면 나",
+          "type": "text",
+          "placeholder": "이름 또는 이메일"
+        },
+        {
+          "name": "assignee",
+          "label": "담당자",
+          "type": "text",
+          "placeholder": "이름 또는 이메일"
+        },
+        {
+          "name": "priority",
+          "label": "우선순위",
+          "type": "select",
+          "options": [
+            "블로커",
+            "Highest",
+            "High",
+            "Medium",
+            "Low",
+            "Lowest",
+            "사소함",
+            "Urgent(P1)",
+            "High(P2)",
+            "Normal(P3)",
+            "Low(P4)"
+          ]
+        },
+        {
+          "name": "components",
+          "label": "구성 요소 — 쉼표로 구분",
+          "type": "text",
+          "placeholder": "기획"
+        },
+        {
+          "name": "labels",
+          "label": "레이블 — 쉼표로 구분",
+          "type": "text",
+          "placeholder": "IoCare+, 정수기"
+        },
+        {
+          "name": "duedate",
+          "label": "기한",
+          "type": "date"
+        },
+        {
+          "name": "description",
+          "label": "설명 (Jira 위키 문법)",
+          "type": "textarea",
+          "placeholder": "h3. 개요\n...\n\nh3. TODO\n * ..."
+        }
       ]
     },
     {
@@ -34,9 +198,14 @@
       "button": "실행",
       "timeout": 120,
       "fields": [
-        {"name": "text", "label": "명령", "type": "text", "required": true,
-         "placeholder": "대만향 아이콘3 프로젝트 문서에 기본 하위 문서들을 생성해줘",
-         "help": "예) 대만향 아이콘3 프로젝트 문서에 기본 하위 문서들을 생성해줘\n예) 대만향 아이콘 프로 문서에 '현지 인증 일정 정리', 'DR3 체크리스트' 하위 문서 만들어줘"}
+        {
+          "name": "text",
+          "label": "명령",
+          "type": "text",
+          "required": true,
+          "placeholder": "대만향 아이콘3 프로젝트 문서에 기본 하위 문서들을 생성해줘",
+          "help": "예) 대만향 아이콘3 프로젝트 문서에 기본 하위 문서들을 생성해줘\n예) 대만향 아이콘 프로 문서에 '현지 인증 일정 정리', 'DR3 체크리스트' 하위 문서 만들어줘"
+        }
       ]
     },
     {
@@ -45,10 +214,28 @@
       "button": "미리보기",
       "timeout": 120,
       "fields": [
-        {"name": "product", "label": "제품명", "type": "text", "required": true, "placeholder": "대만향 아이콘3", "suggest_action": "products"},
-        {"name": "epic", "label": "프로젝트 문서(에픽) 키 — 비우면 자동으로 찾음", "type": "text", "placeholder": "IOCARERENEW2023-2597"},
-        {"name": "assignee", "label": "담당자 — 비우면 제품 등록값 또는 에픽 담당자", "type": "text", "placeholder": "이름 또는 이메일"}
-      ]
+        {
+          "name": "product",
+          "label": "제품명",
+          "type": "text",
+          "required": true,
+          "placeholder": "대만향 아이콘3",
+          "suggest_action": "products"
+        },
+        {
+          "name": "epic",
+          "label": "프로젝트 문서(에픽) 키 — 비우면 자동으로 찾음",
+          "type": "text",
+          "placeholder": "IOCARERENEW2023-2597"
+        },
+        {
+          "name": "assignee",
+          "label": "담당자 — 비우면 나",
+          "type": "text",
+          "placeholder": "이름 또는 이메일"
+        }
+      ],
+      "hidden": true
     },
     {
       "id": "custom",
@@ -56,24 +243,92 @@
       "button": "미리보기",
       "timeout": 120,
       "fields": [
-        {"name": "product", "label": "제품명", "type": "text", "required": true, "placeholder": "대만향 아이콘3", "suggest_action": "products"},
-        {"name": "titles", "label": "문서 제목 (한 줄에 하나) — 제품명 뒤에 붙습니다", "type": "textarea", "required": true,
-         "placeholder": "현지 인증 일정 정리\nDR3 체크리스트"},
-        {"name": "epic", "label": "프로젝트 문서(에픽) 키 — 비우면 자동으로 찾음", "type": "text", "placeholder": "IOCARERENEW2023-2597"},
-        {"name": "assignee", "label": "담당자 — 비우면 제품 등록값 또는 에픽 담당자", "type": "text", "placeholder": "이름 또는 이메일"}
+        {
+          "name": "product",
+          "label": "제품명",
+          "type": "text",
+          "required": true,
+          "placeholder": "대만향 아이콘3",
+          "suggest_action": "products"
+        },
+        {
+          "name": "titles",
+          "label": "문서 제목 (한 줄에 하나) — 제품명 뒤에 붙습니다",
+          "type": "textarea",
+          "required": true,
+          "placeholder": "현지 인증 일정 정리\nDR3 체크리스트"
+        },
+        {
+          "name": "epic",
+          "label": "프로젝트 문서(에픽) 키 — 비우면 자동으로 찾음",
+          "type": "text",
+          "placeholder": "IOCARERENEW2023-2597"
+        },
+        {
+          "name": "assignee",
+          "label": "담당자 — 비우면 나",
+          "type": "text",
+          "placeholder": "이름 또는 이메일"
+        }
       ]
     },
-    {"id": "settings", "label": "설정", "auto": true, "timeout": 30, "fields": []},
-    {"id": "save_settings", "label": "설정 저장", "hidden": true, "timeout": 30},
-    {"id": "products", "label": "제품 목록", "hidden": true, "timeout": 30},
-    {"id": "epic_info", "label": "에픽 기준값", "hidden": true, "timeout": 60},
-    {"id": "apply", "label": "생성", "hidden": true, "timeout": 600},
+    {
+      "id": "settings",
+      "label": "설정",
+      "auto": true,
+      "timeout": 30,
+      "fields": []
+    },
+    {
+      "id": "save_settings",
+      "label": "설정 저장",
+      "hidden": true,
+      "timeout": 30
+    },
+    {
+      "id": "products",
+      "label": "제품 목록",
+      "hidden": true,
+      "timeout": 30
+    },
+    {
+      "id": "epic_info",
+      "label": "에픽 기준값",
+      "hidden": true,
+      "timeout": 60
+    },
+    {
+      "id": "apply",
+      "label": "생성",
+      "hidden": true,
+      "timeout": 600
+    },
     {
       "id": "user",
       "label": "담당자 찾기",
       "button": "찾기",
       "timeout": 30,
-      "fields": [{"name": "query", "label": "이름 또는 이메일", "type": "text", "required": true, "placeholder": "최린아"}]
+      "fields": [
+        {
+          "name": "query",
+          "label": "이름 또는 이메일",
+          "type": "text",
+          "required": true,
+          "placeholder": "최린아"
+        }
+      ]
+    },
+    {
+      "id": "doc_options",
+      "label": "doc_options",
+      "hidden": true,
+      "timeout": 60
+    },
+    {
+      "id": "doc_values",
+      "label": "doc_values",
+      "hidden": true,
+      "timeout": 60
     }
   ]
 }

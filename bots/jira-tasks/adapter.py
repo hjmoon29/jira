@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# 업무 봇 ↔ jira_tasks.py 연결 (/jira-tasks 스킬도 같은 스크립트 사용). 입력: argv[1]=기능, stdin=화면 입력(JSON) / 출력: JSON
+# IoT업무봇 ↔ jira_tasks.py 연결 (/jira-tasks 스킬도 같은 스크립트 사용). 입력: argv[1]=기능, stdin=화면 입력(JSON) / 출력: JSON
 import json, os, subprocess, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -84,6 +84,43 @@ def create(q):
     show_plan(call(*a), auto=True)
 
 
+def region_of(q):
+    r = (q.get("region") or "").strip()
+    return r if r in jt.REGIONS else "국내향"
+
+
+def doc_options(q):
+    # 새 제품: 향지에 맞는 기본 하위 문서 목록 (Jira 호출 없음) — 처음엔 전부 체크
+    product = (q.get("product") or "").strip() or "○○"
+    docs = [jt.summary_of(d, product) for d in jt.docs_for(jt.load_config(), region_of(q))]
+    out(ok=True, data={"docs": docs, "_default": {"docs": docs}}, quiet=True)
+
+
+def doc_values(q):
+    try:
+        out(ok=True, data=jt.doc_values(q.get("product"), region_of(q)), quiet=True)
+    except jt.BotError as e:
+        out(ok=False, text=str(e))
+
+
+def new(q):
+    # 새 제품: 체크한 문서를 값 설정 창의 값(없으면 기준 에픽 값)으로 → 미리보기 후 바로 생성 확인
+    try:
+        p, path = jt.plan_new(q.get("product"), region_of(q), q.get("docs") or [], q.get("values") or {}, opt(q, "epic"), new_plan_file())
+    except jt.BotError as e:
+        out(ok=False, text=str(e))
+    show_plan({"plan": p, "plan_file": path}, auto=True)
+
+
+def new_epic(q):
+    # 새 프로젝트 문서(에픽): 제품명만 → 기준 에픽과 같은 틀로 미리보기 후 바로 생성 확인
+    try:
+        p, path = jt.plan_epic(q.get("product"), new_plan_file())
+    except jt.BotError as e:
+        out(ok=False, text=str(e))
+    show_plan({"plan": p, "plan_file": path}, auto=True)
+
+
 def epic_info(q):
     a = ["epic-info"]
     for k in ("product", "epic"):
@@ -110,7 +147,8 @@ def apply(q):
     p = r["plan"]
     made = [x for x in p["tasks"] if x.get("created")]
     out(ok=True, text=r["text"], view="jira_plan", data={"plan": p, "plan_file": name, "done": True},
-        summary=f"{p['product'] or '하위 문서'} → {p['epic']['key']} 에 {len(made)}개 생성")
+        summary=f"{p['product']} 프로젝트 문서 {p['epic']['key']} 생성" if p.get("kind") == "epic"
+        else f"{p['product'] or '하위 문서'} → {p['epic']['key']} 에 {len(made)}개 생성")
 
 
 def settings(q):
@@ -143,6 +181,6 @@ def user(q):
 if __name__ == "__main__":
     action = sys.argv[1] if len(sys.argv) > 1 else ""
     q = json.loads(sys.stdin.read() or "{}")
-    fn = {"command": command, "defaults": defaults, "custom": custom, "create": create, "epic_info": epic_info, "apply": apply, "settings": settings,
+    fn = {"new_epic": new_epic, "new": new,"doc_options": doc_options, "doc_values": doc_values, "command": command, "defaults": defaults, "custom": custom, "create": create, "epic_info": epic_info, "apply": apply, "settings": settings,
           "save_settings": save_settings, "products": products, "user": user}.get(action)
     fn(q) if fn else out(ok=False, text="알 수 없는 기능")

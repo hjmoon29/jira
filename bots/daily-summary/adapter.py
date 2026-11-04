@@ -1,21 +1,24 @@
 #!/usr/bin/env python3
-# 업무 봇 ↔ 클로드 데일리 써머리 연결 (Mac·Windows 공용). 입력: argv[1]=기능, stdin=JSON / 출력: JSON
+# IoT업무봇 ↔ 클로드 데일리 써머리 연결 (Mac·Windows 공용). 입력: argv[1]=기능, stdin=JSON / 출력: JSON
 #   Mac     : ~/claude-daily-summary,           PC 이름 mac,     상태 표시줄 기록 있음
 #   Windows : %USERPROFILE%\Downloads\claude-daily-summary, PC 이름 windows, 상태 표시줄 기록 ~/.claude/rate-limits-cache.json
-import json, os, platform, re, shutil, subprocess, sys, time, urllib.request
-from datetime import datetime
+import glob, json, os, platform, re, shutil, subprocess, sys, time, urllib.request
+from datetime import datetime, timedelta
 
 HOME = os.path.expanduser("~")
 HERE = os.path.dirname(os.path.abspath(__file__))
 MACHINE = os.environ.get("CLAUDE_DAILY_MACHINE") or {"Darwin": "mac", "Windows": "windows"}.get(platform.system(), "linux")
 DAILY = next((d for d in (os.environ.get("CLAUDE_DAILY_DIR"),
                           os.path.join(HOME, "claude-daily-summary"),
-                          os.path.join(HOME, "Downloads", "claude-daily-summary")) if d and os.path.isfile(os.path.join(d, "claude_daily.py"))), None)
+                          os.path.join(HOME, "Downloads", "claude-daily-summary"),
+                          HERE)  # 데일리 써머리를 따로 설치하지 않은 PC는 봇에 들어 있는 사본을 쓴다
+            if d and os.path.isfile(os.path.join(d, "claude_daily.py"))), None)
 SCRIPT = DAILY and os.path.join(DAILY, "claude_daily.py")
 RUNS = os.environ.get("BOT_HUB_RUNS") or os.path.join(HERE, "..", "..", "runs")
 STATUS = os.path.join(HOME, ".cache", "claude-statusline", "last_input.json")
 RATE_CACHE = os.path.join(HOME, ".claude", "rate-limits-cache.json")  # Windows 상태 표시줄(statusline.py)이 남기는 공식 한도 값
 DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+LOCAL_DRIVE = [r"G:\내 드라이브\claude-daily", r"G:\My Drive\claude-daily"]  # Windows Google Drive 데스크톱 동기화 폴더
 
 
 def out(**kw):
@@ -40,7 +43,8 @@ def when(e):
     if not e:
         return "-"
     e = e / 1000 if e > 1e11 else e
-    return datetime.fromtimestamp(e).strftime("%m-%d %H:%M")
+    d = datetime.fromtimestamp(e)
+    return f"{d:%m/%d}({'월화수목금토일'[d.weekday()]}) {d:%H:%M}"  # 예: 10/25(일) 16:00
 
 
 def now(q):
@@ -112,11 +116,16 @@ def fetch_other_pcs(stage):
     return got
 
 
-def send(q):
+def period(q):
     need_daily()
     s, e = q.get("start") or "", q.get("end") or ""
     if not (DATE.match(s) and DATE.match(e)) or s > e:
         out(ok=False, text="시작일·종료일을 확인하세요 (YYYY-MM-DD, 시작 ≤ 종료)")
+    return s, e
+
+
+def gather():
+    # 모든 PC 기록을 한 폴더(stage)에 모은다: 이 PC는 방금 내보낸 것, 다른 PC는 Drive와 공유 DB 사본(db_cache) 중 최신
     log = []
     ok, t = py(SCRIPT, "export", "--machine", MACHINE)
     log.append(f"① 이 PC({MACHINE}) 기록 내보내기\n" + t)
@@ -130,12 +139,71 @@ def send(q):
         log.append("② 다른 PC 기록 받음 (Google Drive): " + (", ".join(got) or "없음"))
     except Exception as ex:  # Drive 설정이 없거나 실패하면 이 PC 기록만으로 보낸다
         log.append(f"② 다른 PC 기록을 받지 못했습니다 — 이 PC 기록만 포함 ({type(ex).__name__}: {ex})")
+    # 대화 세션에서 받아 둔 공유 DB 사본(db_cache)과 PC에 동기화된 Drive 폴더가 더 최신이면 그것을 쓴다
+    extra = [os.path.join(DAILY, "db_cache", sub) for sub in ("usage", "account")]
+    extra += [os.path.join(d, x) for d in LOCAL_DRIVE if os.path.isdir(d) for x in os.listdir(d)]
+    newer = 0
+    for folder in extra:
+        for path in glob.glob(os.path.join(folder, "*.json")):
+            sub = "account" if os.path.basename(path).startswith("acct__") else "usage"
+            name = os.path.basename(path)
+            if name.startswith((f"{MACHINE}__", f"acct__{MACHINE}__")):
+                continue
+            pc = name.split("__")[1] if name.startswith("acct__") else name.split("__")[0]
+            dst = os.path.join(stage, pc + ("-account" if sub == "account" else ""), name)
+            if generated(path) > generated(dst):
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                shutil.copy(path, dst)
+                newer += 1
+    if newer:
+        log.append(f"③ 공유 DB 사본·Drive 폴더에서 더 최신 기록 {newer}개 사용")
+    return stage, log
+
+
+def generated(path):
+    try:
+        d = json.load(open(path, encoding="utf-8"))
+    except (OSError, ValueError):
+        return ""
+    return str(d.get("generated") or (d.get("data") or {}).get("generated") or "")
+
+
+def report(q):
+    # 기간 리포트 화면: 날짜별 계정 전체(모든 PC 합산) 토큰을 PC별로 나눠 차트로 보여 준다
+    s, e = period(q)
+    stage, log = gather()
+    sys.path.insert(0, DAILY)
+    import claude_daily as cd
+    by = {}
+    for d in cd.load_docs(stage):
+        if s <= d["date"] <= e:
+            by.setdefault(d["date"], {})[d.get("machine") or "?"] = d.get("total", 0)
+    pcs = sorted({m for v in by.values() for m in v}, key=lambda m: (m != "mac", m != "windows", m))
+    days, cur, end = [], datetime.strptime(s, "%Y-%m-%d"), datetime.strptime(e, "%Y-%m-%d")
+    while cur <= end:
+        k = cur.strftime("%Y-%m-%d")
+        v = by.get(k, {})
+        days.append({"date": k, "by": {m: v.get(m, 0) for m in pcs}, "total": sum(v.values())})
+        cur += timedelta(days=1)
+    used = [x for x in days if x["total"]]
+    total = sum(x["total"] for x in days)
+    peak = max(days, key=lambda x: x["total"]) if used else None
+    out(ok=True, view="usage_chart", text="\n".join(log),
+        data={"start": s, "end": e, "pcs": pcs, "days": days, "total": total, "active": len(used),
+              "avg": total // len(used) if used else 0, "peak": peak and {"date": peak["date"], "total": peak["total"]},
+              "pc_total": {m: sum(x["by"][m] for x in days) for m in pcs}},
+        summary=f"{s}~{e} 계정 전체 {total:,} 토큰 · 사용일 {len(used)}일")
+
+
+def send(q):
+    s, e = period(q)
+    stage, log = gather()
     ok, t = py(SCRIPT, "send", f"{s}..{e}", "--from", stage)
-    log.append("③ 메일 발송\n" + t)
+    log.append("④ 메일 발송\n" + t)
     out(ok=ok, text="\n\n".join(log), summary=t.splitlines()[-1] if t else "")
 
 
 if __name__ == "__main__":
     action = sys.argv[1] if len(sys.argv) > 1 else ""
     q = json.loads(sys.stdin.read() or "{}")
-    {"now": now, "show": show, "send": send}.get(action, lambda q: out(ok=False, text="알 수 없는 기능"))(q)
+    {"now": now, "show": show, "report": report, "send": send}.get(action, lambda q: out(ok=False, text="알 수 없는 기능"))(q)

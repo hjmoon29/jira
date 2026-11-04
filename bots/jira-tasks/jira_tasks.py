@@ -12,7 +12,7 @@
 기본 하위 문서 목록·제품 등록(제품→에픽·담당자)은 config.json.
 
 예)
-  jira_tasks.py plan --product "대만향 아이콘3" --defaults
+  jira_tasks.py plan --product "대만향 아이콘3" --defaults --region 해외향
   jira_tasks.py plan --product "대만향 아이콘3" --doc "현지 인증 일정 정리" --doc "포토모드 법무 검토"
   jira_tasks.py plan --epic IOCARERENEW2023-2597 --prefix "[기획]" --doc "대만향 포토모드 법무 검토" --priority 블로커 --labels "IoCare+,정수기" --due 2026-11-30
   jira_tasks.py command "대만향 아이콘3 프로젝트 문서에 '현지 인증 일정 정리' 하위 문서 만들어줘"
@@ -25,6 +25,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 CONFIG = os.path.join(HERE, "config.json")
 TOKEN_FILE = os.path.expanduser("~/.config/jira-bot/token")
 EPIC_LINK = "customfield_10100"
+EPIC_NAME = "customfield_10102"
+DEFAULT_PRIORITY = "블로커"  # Jira 기본값 — 이름으로 지정하면 오류가 나므로 보내지 않고 기본값에 맡김
 
 
 class BotError(Exception):
@@ -59,6 +61,8 @@ def save_config(c):
     for d in c.get("default_docs", []):
         if not (d.get("title") or "").strip():
             raise BotError("기본 하위 문서 제목이 비어 있는 항목이 있습니다")
+        if d.get("regions") is not None and not d["regions"]:
+            raise BotError(f"'{d['title']}' 문서에 국내향·해외향이 하나도 체크되지 않았습니다")
     for p in c.get("products", []):
         if not (p.get("name") or "").strip():
             raise BotError("제품명이 비어 있는 항목이 있습니다")
@@ -114,12 +118,24 @@ def registered(c, product):
     return next((p for p in c.get("products", []) if squash(p["name"]) == squash(product)), None)
 
 
+def epic_type_id(c):
+    # JQL은 '큰틀' 같은 번역 이름을 못 알아들으므로 기준 에픽의 이슈 유형 ID 사용
+    return call("GET", f"/issue/{c['reference_epic']}", params={"fields": "issuetype"})["fields"]["issuetype"]["id"]
+
+
 def find_epic(c, product):
-    """제품명 → 에픽 후보. 1) 설정에 등록된 제품 2) 그 제품명이 들어간 하위 문서들이 속한 에픽"""
+    """제품명 → 에픽 후보. 1) 설정에 등록된 제품 2) 제목에 제품명이 있는 에픽 3) 그 제품명이 들어간 하위 문서들이 속한 에픽"""
     p = registered(c, product)
     if p and p.get("epic"):
         return [{"key": p["epic"].upper(), "summary": "", "why": "설정에 등록된 제품"}]
     q = product.replace('"', "")
+    # 2) 제목에 제품명이 들어간 에픽(큰틀) — 하위 문서가 아직 없는 에픽도 찾게
+    epics = [{"key": i["key"], "summary": i["fields"]["summary"], "why": "제목에 제품명이 있는 프로젝트 문서"}
+             for i in search(f'project = {c["project"]} AND issuetype = {epic_type_id(c)} AND summary ~ "\\"{q}\\""', "summary")
+             if squash(product) in squash(i["fields"]["summary"])]
+    if epics:
+        return epics
+    # 3) 그 제품명이 들어간 하위 문서들이 속한 에픽
     hits = search(f'project = {c["project"]} AND "Epic Link" is not EMPTY AND summary ~ "\\"{q}\\""', f"summary,{EPIC_LINK}")
     cnt = collections.Counter(i["fields"][EPIC_LINK] for i in hits if squash(product) in squash(i["fields"]["summary"]))
     out = []
@@ -148,11 +164,134 @@ def parse_command(text):
     defaults = bool(re.search(r"기본", rest)) and not titles
     if not defaults and not titles:
         raise BotError("기본 하위 문서인지, 만들 문서 제목이 무엇인지 알 수 없습니다. 제목은 따옴표로 감싸 주세요.")
-    return {"product": product, "defaults": defaults, "titles": titles}
+    return {"product": product, "defaults": defaults, "titles": titles, "region": "해외향" if re.search(r"해외", rest) else "국내향"}
 
 
 def fill(s, product):
     return (s or "").replace("{제품}", product)
+
+
+REGIONS = ("국내향", "해외향")
+
+
+def docs_for(c, region=None):
+    # 기본 하위 문서 중 이 향지(국내향·해외향)에 해당하는 것 — regions 가 없으면 둘 다
+    return [d for d in c["default_docs"] if not region or region in (d.get("regions") or REGIONS)]
+
+
+def summary_of(d, product):
+    return re.sub(r"\s+", " ", f"{d.get('prefix', '')} {product} {d['title']}").strip()
+
+
+CATEGORIES = ("정수기", "비데", "청정기", "매트리스", "모션베드", "연수기", "음식물처리기", "식기세척기", "인덕션", "제습기", "가습기", "안마의자", "에어컨", "냉장고")
+
+
+def product_labels(c, product):
+    # 레이블 기본값 = 설정 레이블(IoCare+) + 제품명에 들어 있는 제품군 (기준 에픽의 '정수기' 같은 값을 다른 제품에 옮기지 않게)
+    cats = [k for k in CATEGORIES if k in squash(product)]
+    return list(c["labels"]) + [k for k in cats if k not in c["labels"]]
+
+
+def doc_values(product, region):
+    """새 제품 화면의 '값 설정' 창: 문서마다 기준 에픽(reference_epic)의 같은 문서에서 담당자·구성요소·레이블·우선순위를 가져온다.
+    같은 문서가 여러 개(모델별)면 가장 많이 쓴 값, 없으면 설정 기본값. 담당자는 항상 나"""
+    c = load_config()
+    product = (product or "").strip()
+    reg = registered(c, product) if product else None
+    ref = (c.get("reference_epic") or "").strip().upper()
+    children = search(f'"Epic Link" = {ref}', "summary,assignee,components,labels,priority", 500) if ref else []
+    u = me()
+    mine = (u["name"], u["displayName"])
+    rows = []
+    for d in docs_for(c, region):
+        t, k = norm(d["title"]), squash(d.get("ref") or "")
+        hit = [i for i in children if norm(i["fields"]["summary"]).endswith(t)] or \
+              ([i for i in children if k in squash(i["fields"]["summary"])] if k else [])
+        who = mine  # 담당자 기본값 = 나 (Jira를 만드는 사람) — 값 설정 창에서 바꿀 수 있음
+        rows.append({"summary": summary_of(d, product), "title": d["title"], "ref_keys": [i["key"] for i in hit],
+                     "assignee": who[0] if who else "", "assignee_name": who[1] if who else "",
+                     "components": ", ".join(common(hit, "components", lambda x: x["name"]) or c["components"]),
+                     "labels": ", ".join((reg or {}).get("labels") or product_labels(c, product)),
+                     "priority": common(hit, "priority", lambda x: x["name"]) or "", "duedate": ""})
+    return {"ref": ref, "docs": rows}
+
+
+def plan_new(product, region, picks, values=None, epic=None, out=None):
+    """새 제품 화면: 체크한 문서(picks = 요약 목록)를 문서별 값(values = {요약: {assignee, components, labels, priority, duedate}})으로.
+    values 에 없는 문서는 기준 에픽 값(doc_values)"""
+    c = load_config()
+    product = (product or "").strip()
+    if not product:
+        raise BotError("제품명을 입력하세요")
+    picks, values = set(picks or ()), values or {}
+    epic, e = get_epic(c, product, epic)
+    base = {r["summary"]: r for r in doc_values(product, region)["docs"]}
+    children = children_of(epic)
+    have = {i["fields"]["summary"].strip(): i["key"] for i in children if squash(product) in squash(i["fields"]["summary"])}
+    split = lambda s: [x.strip() for x in (s or "").split(",") if x.strip()]
+    users, tasks = {}, []
+    for d in docs_for(c, region):
+        s = summary_of(d, product)
+        if s not in picks:
+            continue
+        v = dict(base.get(s, {}), **values.get(s, {}))
+        q = (v.get("assignee") or "").strip()
+        if q and q not in users:
+            users[q] = resolve_user(q)
+        x = {"summary": s, "description": fill(d.get("description"), product), "assignee": users.get(q),
+             "labels": split(v.get("labels")), "components": split(v.get("components")),
+             "priority": v.get("priority") or None, "duedate": v.get("duedate") or None}
+        k, title = same_task(s, have)
+        if k:
+            x["skip"], x["skip_title"] = k, title
+        tasks.append(x)
+    if not tasks:
+        raise BotError("만들 하위 문서를 하나 이상 체크하세요")
+    p = {"project": e["fields"]["project"]["key"], "issuetype": c["issuetype"], "product": product, "region": region,
+         "epic": {"key": epic, "summary": e["fields"]["summary"]}, "labels": c["labels"], "components": c["components"],
+         "reporter": me(), "priority": None, "duedate": None, "per_task": True, "tasks": tasks}
+    out = out or os.path.join(os.getcwd(), f"jira-plan-{time.strftime('%Y%m%d-%H%M%S')}.json")
+    json.dump(p, open(out, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    return p, out
+
+
+def plan_epic(product, out=None):
+    """새 프로젝트 문서(에픽): 제품명만으로 config epic_template(기준 에픽과 같은 유형·우선순위·구성요소·설명 틀) 계획.
+    같은 제목의 큰틀이 이미 있으면 건너뜀. 담당자·보고자는 나"""
+    c = load_config()
+    t = c["epic_template"]
+    product = (product or "").strip()
+    if not product:
+        raise BotError("제품명을 입력하세요")
+    summary = fill(t["summary"], product)
+    tid = epic_type_id(c)
+    q = product.replace('"', "")
+    have = {i["fields"]["summary"].strip(): i["key"]
+            for i in search(f'project = {c["project"]} AND issuetype = {tid} AND summary ~ "\\"{q}\\""', "summary")}
+    owner = me()
+    x = {"summary": summary, "description": fill(t.get("description"), product), "assignee": owner,
+         "labels": list(t.get("labels") or []), "components": list(t.get("components") or []),
+         "priority": t.get("priority") or None, "duedate": None}
+    k, title = same_task(summary, have)
+    if k:
+        x["skip"], x["skip_title"] = k, title
+    p = {"kind": "epic", "project": c["project"], "issuetype": t["issuetype"], "issuetype_id": tid, "product": product,
+         "epic": {"key": "", "summary": ""}, "labels": x["labels"], "components": x["components"],
+         "reporter": owner, "priority": None, "duedate": None, "per_task": True, "tasks": [x]}
+    out = out or os.path.join(os.getcwd(), f"jira-plan-{time.strftime('%Y%m%d-%H%M%S')}.json")
+    json.dump(p, open(out, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    return p, out
+
+
+def register_product(product, epic):
+    # 만든 에픽을 제품 등록에 넣어 '새 제품 하위 문서' 화면이 바로 찾게
+    c = load_config()
+    r = registered(c, product)
+    if r:
+        r["epic"] = epic
+    else:
+        c.setdefault("products", []).append({"name": product, "epic": epic})
+    save_config(c)
 
 
 def get_epic(c, product, epic):
@@ -187,7 +326,7 @@ def common(children, k, f=lambda x: x):
 def epic_defaults(c, reg, e, children):
     lab = common(children, "labels")
     comp = common(children, "components", lambda x: x["name"])
-    owner = (reg or {}).get("assignee") or (e["fields"].get("assignee") or {}).get("name") or ""
+    owner = me()["name"]  # 담당자 기본값 = 나 (Jira를 만드는 사람)
     return {"labels": list((reg or {}).get("labels") or lab or c["labels"]),
             "components": list(comp or c["components"]),
             "priority": common(children, "priority", lambda x: x["name"]),
@@ -211,8 +350,9 @@ def epic_info(product=None, epic=None):
                        "prefix": pre.most_common(1)[0][0] if pre else c.get("custom_prefix", "[기획]")}}
 
 
-def plan(product, epic=None, assignee=None, defaults=False, titles=(), out=None, opts=None):
-    """opts: 직접 입력값 (prefix, description, issuetype, reporter, priority, components, labels, duedate) — 없으면 에픽 기존 문서 기준"""
+def plan(product, epic=None, assignee=None, defaults=False, titles=(), out=None, opts=None, region=None):
+    """opts: 직접 입력값 (prefix, description, issuetype, reporter, priority, components, labels, duedate) — 없으면 에픽 기존 문서 기준
+    region: 기본 하위 문서를 이 향지(국내향·해외향) 것만 — 없으면 국내향"""
     c = load_config()
     opts = opts or {}
     product = (product or "").strip()
@@ -221,7 +361,7 @@ def plan(product, epic=None, assignee=None, defaults=False, titles=(), out=None,
 
     docs = []
     if defaults:
-        docs += [dict(d) for d in c["default_docs"]]
+        docs += [dict(d) for d in docs_for(c, region or "국내향")]
     prefix = opts.get("prefix", c.get("custom_prefix", "[기획]"))
     docs += [{"prefix": prefix, "title": t.strip(), "description": opts.get("description", ""), "custom": True} for t in titles if t.strip()]
     if not docs:
@@ -254,11 +394,14 @@ def plan(product, epic=None, assignee=None, defaults=False, titles=(), out=None,
 
 def apply(path):
     p = json.load(open(path, encoding="utf-8"))
-    base = {"project": {"key": p["project"]}, "issuetype": {"name": p["issuetype"]}, "labels": p["labels"],
-            "components": [{"name": c} for c in p["components"]], EPIC_LINK: p["epic"]["key"]}
+    is_epic = p.get("kind") == "epic"
+    base = {"project": {"key": p["project"]}, "issuetype": {"id": p["issuetype_id"]} if p.get("issuetype_id") else {"name": p["issuetype"]}, "labels": p["labels"],
+            "components": [{"name": c} for c in p["components"]]}
+    if not is_epic:
+        base[EPIC_LINK] = p["epic"]["key"]
     if p.get("reporter"):
         base["reporter"] = {"name": p["reporter"]["name"]}
-    if p.get("priority"):
+    if p.get("priority") and p["priority"] != DEFAULT_PRIORITY:
         base["priority"] = {"name": p["priority"]}
     if p.get("duedate"):
         base["duedate"] = p["duedate"]
@@ -267,12 +410,29 @@ def apply(path):
         if x.get("skip") or x.get("created"):
             continue
         f = dict(base, summary=x["summary"])
+        # 새 제품 화면에서 문서별로 정한 값
+        if x.get("labels") is not None:
+            f["labels"] = x["labels"]
+        if x.get("components") is not None:
+            f["components"] = [{"name": c} for c in x["components"]]
+        if x.get("priority") == DEFAULT_PRIORITY:
+            f.pop("priority", None)
+        elif x.get("priority"):
+            f["priority"] = {"name": x["priority"]}
+        if x.get("duedate"):
+            f["duedate"] = x["duedate"]
         if x.get("description"):
             f["description"] = x["description"]
         if x.get("assignee"):
             f["assignee"] = {"name": x["assignee"]["name"]}
+        if is_epic:
+            f[EPIC_NAME] = x["summary"]
         x["created"] = call("POST", "/issue", {"fields": f})["key"]
         log.append(f"  생성 {x['created']}  {x['summary']}")
+        if is_epic:
+            p["epic"] = {"key": x["created"], "summary": x["summary"]}
+            register_product(p["product"], x["created"])
+            log.append(f"  제품 등록: {p['product']} → {x['created']}")
         json.dump(p, open(path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)  # 끊겨도 다시 실행하면 이어서
     return p, log
 
@@ -294,13 +454,14 @@ def plan_text(p, out):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--json", action="store_true", help="결과를 JSON으로 출력 (업무 봇용)")
+    ap.add_argument("--json", action="store_true", help="결과를 JSON으로 출력 (IoT업무봇용)")
     sp = ap.add_subparsers(dest="cmd", required=True)
     pp = sp.add_parser("plan")
     pp.add_argument("--product", default="")
     pp.add_argument("--epic")
     pp.add_argument("--assignee")
-    pp.add_argument("--defaults", action="store_true", help="기본 하위 문서 전체")
+    pp.add_argument("--defaults", action="store_true", help="기본 하위 문서 전체 (--region 향지 것만)")
+    pp.add_argument("--region", choices=REGIONS, help="기본 하위 문서 향지 (없으면 국내향)")
     pp.add_argument("--doc", action="append", default=[], help="별도 하위 문서 제목 (여러 번)")
     pp.add_argument("--out")
     # 직접 입력값 (없으면 에픽의 기존 하위 문서와 같은 값)
@@ -326,16 +487,17 @@ def main():
         if a.cmd in ("plan", "command"):
             if a.cmd == "command":
                 q = parse_command(a.text)
-                p, out = plan(q["product"], defaults=q["defaults"], titles=q["titles"], out=a.out)
+                p, out = plan(q["product"], defaults=q["defaults"], titles=q["titles"], out=a.out, region=q["region"])
             else:
                 split = lambda s: None if s is None else [x.strip() for x in s.split(",") if x.strip()]
                 opts = {"prefix": a.prefix, "description": a.description, "issuetype": a.issuetype, "reporter": a.reporter,
                         "priority": a.priority, "components": split(a.components), "labels": split(a.labels), "duedate": a.due}
-                p, out = plan(a.product, a.epic, a.assignee, a.defaults, a.doc, a.out, {k: v for k, v in opts.items() if v is not None})
+                p, out = plan(a.product, a.epic, a.assignee, a.defaults, a.doc, a.out, {k: v for k, v in opts.items() if v is not None}, a.region)
             print(json.dumps({"plan": p, "plan_file": out}, ensure_ascii=False) if a.json else plan_text(p, out))
         elif a.cmd == "apply":
             p, log = apply(a.plan_file)
-            msg = "\n".join(log) + f"\n\n완료: {len(log)}개 생성 → https://jira.coway.com/browse/{p['epic']['key']}"
+            made = sum(1 for x in p["tasks"] if x.get("created"))
+            msg = "\n".join(log) + f"\n\n완료: {made}개 생성 → https://jira.coway.com/browse/{p['epic']['key']}"
             print(json.dumps({"plan": p, "text": msg}, ensure_ascii=False) if a.json else msg)
         elif a.cmd == "epic-info":
             r = epic_info(a.product, a.epic)

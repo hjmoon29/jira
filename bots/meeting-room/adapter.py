@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# 업무 봇 ↔ meeting_room.py 연결. 입력: argv[1]=기능, stdin=화면 입력(JSON) / 출력: JSON
+# IoT업무봇 ↔ meeting_room.py 연결. 입력: argv[1]=기능, stdin=화면 입력(JSON) / 출력: JSON
 import json, os, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

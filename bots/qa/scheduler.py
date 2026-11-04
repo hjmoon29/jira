@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """QA 대응 예약 실행기 — OS 작업(Windows 작업 스케줄러 'WorkBotQA' / Mac launchd 'com.workbot.qa')이 10분마다 실행한다.
-때가 된 예약(next_run <= 지금)을 실행하고 다음 시각을 계산한다. 업무 봇 화면이 꺼져 있어도 동작한다.
+때가 된 예약(next_run <= 지금)을 실행하고 다음 시각을 계산한다. IoT업무봇 화면이 꺼져 있어도 동작한다.
 기록: runs/qa-scheduler.log
 """
 import datetime, os, sys, time, traceback

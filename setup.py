@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""업무 봇 처음 설정 (Mac·Windows 공용). 저장소를 받은 뒤 한 번 실행:  python3 setup.py  (Windows: py -3 setup.py)
+"""IoT업무봇 처음 설정 (Mac·Windows 공용). 저장소를 받은 뒤 한 번 실행:  python3 setup.py  (Windows: py -3 setup.py)
 
 1. Python 버전 확인 (3.8 이상)
 2. Jira 개인 액세스 토큰 저장 (~/.config/jira-bot/token — 저장소 밖, 이 PC 전용)
@@ -56,6 +56,8 @@ def is_link(p):
 
 def link_skills():
     src_root = os.path.join(HERE, "skills")
+    if not os.path.isdir(src_root):  # 설치용 zip에는 스킬이 없다 (저장소 연결 후 생김)
+        return
     dst_root = os.path.join(HOME, ".claude", "skills")
     os.makedirs(dst_root, exist_ok=True)
     for name in sorted(os.listdir(src_root)):
@@ -88,4 +90,4 @@ if __name__ == "__main__":
     check_python()
     token()
     link_skills()
-    print("\n완료. 실행: " + ("'업무봇 실행.bat' 더블클릭" if WIN else "'업무봇 실행.command' 더블클릭") + " 또는 python3 hub.py")
+    print("\n완료. 실행: " + ("'IoT업무봇 실행.bat' 더블클릭" if WIN else "'IoT업무봇 실행.command' 더블클릭") + " 또는 python3 hub.py")

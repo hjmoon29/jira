@@ -1,10 +1,10 @@
-# 업무 봇
+# IoT업무봇(Beta)
 
-여러 업무 봇을 한 화면에서 실행하는 로컬 프로그램. Mac·Windows가 회사 Git 저장소로 같은 코드·설정을 같이 쓰고 같이 고친다.
+여러 IoT업무봇을 한 화면에서 실행하는 로컬 프로그램. Mac·Windows가 회사 Git 저장소로 같은 코드·설정을 같이 쓰고 같이 고친다.
 각 PC 안에서만 열린다(http://127.0.0.1:8765).
 
 ## 실행
-- Mac: `업무봇 실행.command` 더블클릭 / Windows: `업무봇 실행.bat` 더블클릭
+- Mac: `IoT업무봇 실행.command` 더블클릭 / Windows: `IoT업무봇 실행.bat` 더블클릭
 - 또는 `python3 hub.py` (Windows: `py -3 hub.py`). 터미널(명령 창)을 닫으면 종료.
 
 ## 처음 설정 (PC마다 한 번)
@@ -27,21 +27,22 @@
    (Windows 작업 스케줄러 `WorkBotQA`, Mac launchd `com.workbot.qa`). 예약 목록·실행 기록은 PC마다 `runs/` 에 따로 있다.
 
 ## 같이 쓰기 (동기화)
-- 화면의 **🔄 업무 봇 동기화**: 상태 확인 → **업데이트 받기**(다른 PC 변경 받기) / **변경 올리기**(이 PC 변경 올리기)
+- 화면의 **🔄 IoT업무봇 동기화**: 상태 확인 → **업데이트 받기**(다른 PC 변경 받기) / **변경 올리기**(이 PC 변경 올리기)
 - Jira 기본 하위 문서 목록·제품 등록(`bots/jira-tasks/config.json`)도 저장소에 들어 있어 두 PC가 같은 설정을 쓴다.
   설정을 바꾼 뒤 '변경 올리기' 를 해야 다른 PC에 반영된다.
-- 작업 시작 전 '업데이트 받기', 끝나면 '변경 올리기' 습관. 충돌이 나면 Claude Code에 "업무 봇 git 충돌 해결해줘".
+- 작업 시작 전 '업데이트 받기', 끝나면 '변경 올리기' 습관. 충돌이 나면 Claude Code에 "IoT업무봇 git 충돌 해결해줘".
 
 ## 들어 있는 봇
 | 폴더 | 봇 | 기능 |
 |---|---|---|
-| bots/jira-tasks | Jira 하위 문서 생성 | 직접 입력(요약·이슈 유형·보고자·담당자·우선순위·구성 요소·레이블·기한·설명) / 명령으로 생성 / 기본 하위 문서 / 별도 하위 문서 / 설정(기본 문서 목록·제품 등록) / 담당자 찾기 |
+| bots/jira-tasks | JIRA 자동 생성기 | 직접 입력(요약·이슈 유형·보고자·담당자·우선순위·구성 요소·레이블·기한·설명) / 명령으로 생성 / 기본 하위 문서 / 별도 하위 문서 / 설정(기본 문서 목록·제품 등록) / 담당자 찾기 |
 | bots/spec-doc | 기획 사양 정리 (wiki) | 초안 만들기(위키·Drive·Figma → Claude가 [기획 사양 정리] 형식으로 작성) / 초안 목록·미리보기·위키 게시 |
 | bots/qa | QA 대응 | Jira 이슈 답변 / 문의사항 답변 (답변 초안 → 엑셀 → 메일, Jira·문서에는 안 씀) / 예약 발송 |
 | bots/meeting-room | 회의실 예약 | 회의실 잡기(일자·시간대·인원 → gapps 빈 회의실을 Google 캘린더 일정으로 예약) / 빈 회의실 보기 / 로그인. Playwright 필요(`pip install playwright`), 브라우저 로그인 상태는 `~/.playwright-edge-profile` |
 | bots/healthcare | 헬스케어 예약 | 가장 빠른 시간 찾기 / 예약하기(키퍼·시간대·희망 일자·시간) / 로그인. 포털 로그인에 NETSPASS 추가 인증이 있어 '로그인' 탭에서 직접 로그인하면 세션 쿠키를 `~/.config/work-bot/healthcare_cookies.json` 에 저장해 씀(만료 시 재로그인) |
+| bots/ims | IoT IMS | 등록·수정·삭제(147개 작업, `writes.py`: 기획·콘텐츠 메뉴만 — 기기 제어·펌웨어/OTA 배포·공장 출고·인증서·권한/사용자·AI/RAG·이미지 업로드는 제외. 작업 선택 + 경로 값/쿼리/본문 JSON → '미리보기'로 보낼 요청 확인 → 'IMS에 반영'(확인 창, 운영은 '운영' 입력 필요). 본문을 비우고 미리보기하면 `templates.json` 의 본문 틀(필드 이름) 표시. 실행 기록 `runs/ims/changes.jsonl`. **실제 반영은 아직 한 번도 시험하지 않음**) / 조회(37개 항목: 제품별 앱 설정 한눈에·기준정보·소모품·FAQ·공지·라이프스토리·자동화·대시보드 통계·운영 기기·POP 코드·OTA·프로토콜·프로젝트·공통 코드 → 표 + 엑셀 `runs/ims/`) / 로그인. 개발·운영 선택. IMS 로그인에 추가 인증이 있어 '로그인' 탭에서 직접 로그인하면 IMS 전용 브라우저 프로필 `~/.playwright-ims-profile` 에 세션이 남고, 조회는 그 프로필을 화면 없이 열어 IMS 화면이 보내는 인증 헤더로 API 를 부름(토큰을 따로 저장하지 않음). 항목 추가·수정은 `catalog.py` 를 고친 뒤 `python make_botjson.py` 로 bot.json 재생성. Playwright 필요 |
 | bots/daily-summary | 토큰 사용량 리포트 | 지금 사용량 / 날짜별 상세 / Mac+Windows 합산 기간 리포트 메일 |
-| bots/sync | 업무 봇 동기화 | 상태 / 업데이트 받기 / 변경 올리기 |
+| bots/sync | IoT업무봇 동기화 | 상태 / 업데이트 받기 / 변경 올리기 |
 
 ## 봇 추가하는 법
 `bots/<봇id>/` 폴더를 만들고 두 파일을 넣은 뒤 화면을 새로 고친다. 화면 코드는 고칠 필요 없음.
@@ -59,7 +60,7 @@ Mac·Windows 둘 다에서 돌도록: 경로는 `os.path.expanduser("~")`·`os.p
      "fields": [
        {"name": "q", "label": "입력", "type": "text|textarea|select|radio|checkbox|date|multi(여러 개 선택)",
         "required": true, "default": "", "placeholder": "", "help": "입력란 아래 안내",
-        "options": ["select용"], "show_if": {"다른필드": "값"}, "suggest_action": "(선택) 자동완성 목록을 주는 숨은 기능 id",
+        "options": ["select용"], "show_if": {"다른필드": "값 또는 [값 목록]"}, "suggest_action": "(선택) 자동완성 목록을 주는 숨은 기능 id",
         "fill_action": "(선택) 이 칸을 입력하면 data.values 로 다른 칸을 채우는 숨은 기능 id (직접 고친 칸은 유지)"}
      ],
      "init_action": "(선택) 탭을 처음 열 때 data.values 로 빈 칸을 채우는 숨은 기능 id",
@@ -76,6 +77,7 @@ date 기본값: `today`, `month_start`. `"hidden": true` 인 기능은 탭에 �
  "view": "text | cards | jira_plan | jira_settings", "data": {}, "quiet": false}
 ```
 - `cards`: `data = {"cards": [{"label","value","unit","sub","gauge"}], "note"}`
+- `table`: `data = {"tables": [{"title","columns","rows","total","shown"}], "file"}` — 표 여러 개 + '엑셀 열기/폴더 열기' 버튼(봇의 숨은 기능 `open_file` 을 `{file, what}` 으로 부름)
 - `quiet: true` 면 실행 기록에 남기지 않음(자동완성 등).
 - 작업 파일은 환경변수 `BOT_HUB_RUNS` 폴더(runs/, 저장소 제외)에 둔다. 실행 기록은 runs/history.jsonl.
 

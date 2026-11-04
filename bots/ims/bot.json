@@ -1,0 +1,420 @@
+{
+  "name": "IoT IMS",
+  "icon": "🛰️",
+  "order": 15,
+  "group": "기획 업무",
+  "tagline": "IMS 조회 → 엑셀, 등록·수정·삭제",
+  "description": "사내 IoT IMS(IoCare 통합관리시스템)의 메뉴 데이터를 조회해 표로 보여 주고 엑셀로 저장합니다. 제품별 앱 설정(기준정보·소모품·알림·자동화·살균·진단)을 한 번에 모아 보거나, 각 메뉴의 목록을 통째로 받을 수 있습니다. '등록·수정·삭제' 탭은 미리보기로 보낼 요청을 확인한 뒤 'IMS에 반영' 을 눌러야 실제로 바뀝니다(기록: runs/ims/changes.jsonl). 처음과 IMS 세션이 끝났을 때 '로그인' 탭에서 직접 로그인해야 합니다(추가 인증).",
+  "actions": [
+    {
+      "id": "query",
+      "label": "조회",
+      "button": "조회",
+      "timeout": 600,
+      "fields": [
+        {
+          "name": "env",
+          "label": "환경",
+          "type": "select",
+          "options": [
+            "개발",
+            "검증",
+            "운영"
+          ],
+          "default": "개발",
+          "help": "개발 = ims.iot.coway.dev / 검증 = ims.iot.coway.blue / 운영 = ims.iot.coway.com (환경마다 처음 한 번 로그인)"
+        },
+        {
+          "name": "item",
+          "label": "조회 항목",
+          "type": "select",
+          "options": [
+            "IoCareApp 관리 > 제품별 앱 설정 한눈에 (기준정보·소모품·알림·자동화·살균·진단)",
+            "IoCareApp 관리 > 제품 관리 > 기준 정보 (전체 모델)",
+            "IoCareApp 관리 > 컨텐츠 관리 > 소모품",
+            "IoCareApp 관리 > 컨텐츠 관리 > 오염원",
+            "IoCareApp 관리 > 컨텐츠 관리 > 문제 해결 가이드",
+            "IoCareApp 관리 > 제품 관리 > 문제 해결 컨텐츠 (제품 유형별)",
+            "IoCareApp 관리 > 컨텐츠 관리 > FAQ",
+            "IoCareApp 관리 > 컨텐츠 관리 > FAQ 카테고리",
+            "IoCareApp 관리 > 컨텐츠 관리 > 공지사항 (앱)",
+            "IoCareApp 관리 > 라이프스토리 > 라이프스토리 컨텐츠",
+            "IoCareApp 관리 > 라이프스토리 > 키워드 설정",
+            "IoCareApp 관리 > 자동화 관리 > 자동화 컨텐츠",
+            "IoCareApp 관리 > 자동화 관리 > 자동화 항목 설정",
+            "IoCareApp 관리 > 스마트 고장진단 이미지 목록",
+            "IoCareApp 관리 > 공통 설정 > 제품 출시국가",
+            "IoCareApp 관리 > 공통 설정 > 제품 향지",
+            "IoCareApp 관리 > 공통 설정 > 고객센터",
+            "IoCareApp 관리 > 공통 설정 > 제품 카테고리",
+            "IoCareApp 관리 > 앱 관리 > 앱 업데이트",
+            "IoCareApp 관리 > 앱 관리 > 시스템 점검",
+            "대시 보드 > IoCare 제품 현황 (모델·국가별 판매/연결)",
+            "대시 보드 > 제품 페어링 통계 + 앱 페어링 실패",
+            "대시 보드 > 제품 Data 통계",
+            "기기 관리 > 운영 기기 조회 (시리얼·MAC·주문번호·제품)",
+            "기기 관리 > POP 코드 관리 (제품 모델 목록)",
+            "기기 관리 > 전체 모델 목록 (POP 코드·제품명·플랫폼)",
+            "기기 관리 > 서비스 코드 목록",
+            "OTA > 펌웨어 관리",
+            "OTA > 작업 관리",
+            "OTA > 사용자 OTA 등록 관리",
+            "OTA > 이력 관리",
+            "OTA > OTA Aging",
+            "IoT 프로토콜 > 프로토콜 통합 관리 (제품 유형별 전체 항목·모델 적용)",
+            "IoT 프로토콜 > 프로토콜 API (제품 유형별)",
+            "플랫폼 관리 > 프로젝트 관리 (시작일의 연도)",
+            "Admin 관리 > IMS 공지사항",
+            "Admin 관리 > 공통 코드 (검색어로 거르기)"
+          ],
+          "default": "IoCareApp 관리 > 제품별 앱 설정 한눈에 (기준정보·소모품·알림·자동화·살균·진단)"
+        },
+        {
+          "name": "model",
+          "label": "제품(모델) — POP 코드나 제품명",
+          "type": "text",
+          "placeholder": "[02FAI] 아이콘 정수기 또는 02FAI",
+          "suggest_action": "models",
+          "show_if": {
+            "item": [
+              "IoCareApp 관리 > 제품별 앱 설정 한눈에 (기준정보·소모품·알림·자동화·살균·진단)",
+              "대시 보드 > 제품 Data 통계",
+              "기기 관리 > 운영 기기 조회 (시리얼·MAC·주문번호·제품)",
+              "기기 관리 > POP 코드 관리 (제품 모델 목록)"
+            ]
+          },
+          "help": "목록은 한 번 조회한 뒤부터 자동완성됩니다"
+        },
+        {
+          "name": "prod_type",
+          "label": "제품 유형",
+          "type": "select",
+          "options": [
+            "",
+            "청정기",
+            "정수기",
+            "비데",
+            "제습기",
+            "가습기",
+            "매트리스",
+            "BLEOnly 비데",
+            "모션베드",
+            "음식물처리기",
+            "에어컨",
+            "청소기"
+          ],
+          "default": "",
+          "show_if": {
+            "item": [
+              "IoCareApp 관리 > 제품 관리 > 문제 해결 컨텐츠 (제품 유형별)",
+              "대시 보드 > 제품 Data 통계",
+              "기기 관리 > 운영 기기 조회 (시리얼·MAC·주문번호·제품)",
+              "기기 관리 > POP 코드 관리 (제품 모델 목록)",
+              "IoT 프로토콜 > 프로토콜 통합 관리 (제품 유형별 전체 항목·모델 적용)",
+              "IoT 프로토콜 > 프로토콜 API (제품 유형별)"
+            ]
+          }
+        },
+        {
+          "name": "keyword",
+          "label": "검색어",
+          "type": "text",
+          "show_if": {
+            "item": [
+              "기기 관리 > 운영 기기 조회 (시리얼·MAC·주문번호·제품)",
+              "기기 관리 > POP 코드 관리 (제품 모델 목록)",
+              "Admin 관리 > 공통 코드 (검색어로 거르기)"
+            ]
+          },
+          "placeholder": "운영 기기: 시리얼·MAC·주문번호 / POP 코드: 제품명 / 공통 코드: 그룹·코드명"
+        },
+        {
+          "name": "start",
+          "label": "시작일",
+          "type": "date",
+          "default": "month_start",
+          "show_if": {
+            "item": [
+              "대시 보드 > 제품 페어링 통계 + 앱 페어링 실패",
+              "대시 보드 > 제품 Data 통계",
+              "OTA > 이력 관리",
+              "OTA > OTA Aging",
+              "플랫폼 관리 > 프로젝트 관리 (시작일의 연도)"
+            ]
+          }
+        },
+        {
+          "name": "end",
+          "label": "종료일",
+          "type": "date",
+          "default": "today",
+          "show_if": {
+            "item": [
+              "대시 보드 > 제품 페어링 통계 + 앱 페어링 실패",
+              "대시 보드 > 제품 Data 통계",
+              "OTA > 이력 관리",
+              "OTA > OTA Aging"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "change_preview",
+      "label": "등록·수정·삭제",
+      "button": "미리보기",
+      "timeout": 300,
+      "extra": [
+        {
+          "action": "change_run",
+          "button": "IMS에 반영",
+          "confirm": "선택한 환경의 IMS 데이터를 바로 바꿉니다(되돌리기는 IMS 화면에서 직접). 미리보기로 요청을 확인했나요?"
+        }
+      ],
+      "fields": [
+        {
+          "name": "env",
+          "label": "환경",
+          "type": "select",
+          "options": [
+            "개발",
+            "검증",
+            "운영"
+          ],
+          "default": "개발",
+          "help": "개발 = ims.iot.coway.dev / 검증 = ims.iot.coway.blue / 운영 = ims.iot.coway.com (환경마다 처음 한 번 로그인)"
+        },
+        {
+          "name": "op",
+          "label": "작업",
+          "type": "select",
+          "options": [
+            "Admin 관리 > 공통 코드 — 삭제",
+            "Admin 관리 > 공통 코드 — 등록",
+            "Admin 관리 > 공통 코드 — 수정",
+            "Admin 관리 > 공통 코드 — 자동 등록",
+            "Admin 관리 > 공통 코드 그룹 — 등록",
+            "Admin 관리 > 공통 코드 그룹 — 수정",
+            "Admin 관리 > 공통 코드 그룹 — 삭제",
+            "Admin 관리 > IMS 공지사항 — 등록",
+            "Admin 관리 > IMS 공지사항 — 수정",
+            "Admin 관리 > IMS 공지사항 — 삭제",
+            "기기 관리 > POP 코드 메타 — 수정",
+            "기기 관리 > POP 코드 메타 — 삭제 (메타)",
+            "기기 관리 > POP 코드 메타 — 수정 (메타)",
+            "기기 관리 > POP 코드 — 삭제",
+            "기기 관리 > POP 코드 — 등록",
+            "기기 관리 > POP 코드 — 수정",
+            "기기 관리 > POP 코드 — 복사",
+            "기기 관리 > 테스트 제품 — 등록",
+            "기기 관리 > 테스트 제품 — 수정",
+            "기기 관리 > 테스트 제품 — 삭제",
+            "OTA > OTA Aging — 등록",
+            "OTA > OTA Aging — 수정",
+            "OTA > OTA Aging — 삭제",
+            "OTA > OTA Aging — 상태 변경",
+            "OTA > 사용자 OTA 등록 — 삭제",
+            "OTA > 사용자 OTA 등록 — 등록",
+            "OTA > 사용자 OTA 등록 — 수정",
+            "OTA > 사용자 OTA 등록 — 사용 여부 변경",
+            "플랫폼 관리 > 프로젝트 — 삭제",
+            "플랫폼 관리 > 프로젝트 — 삭제 (항목)",
+            "플랫폼 관리 > 프로젝트 — 등록 (항목)",
+            "플랫폼 관리 > 프로젝트 — 수정 (항목)",
+            "IoT 프로토콜 > 프로토콜 API — 등록",
+            "IoT 프로토콜 > 프로토콜 API — 수정",
+            "IoT 프로토콜 > 프로토콜 API — 삭제",
+            "IoT 프로토콜 > 프로토콜 공통 — 반영",
+            "IoT 프로토콜 > 프로토콜 공통 — 복제",
+            "IoT 프로토콜 > 프로토콜 복사 — 등록",
+            "IoT 프로토콜 > 기능 — 삭제 (일괄)",
+            "IoT 프로토콜 > 기능 — 등록 (일괄)",
+            "IoT 프로토콜 > 기능 — 수정 (일괄)",
+            "IoT 프로토콜 > 프로토콜 통합 관리 — 수정 (모델 프로토콜)",
+            "IoT 프로토콜 > 그룹 제어 — 등록",
+            "IoT 프로토콜 > 그룹 제어 — 수정",
+            "IoT 프로토콜 > 그룹 제어 — 삭제",
+            "IoT 프로토콜 > 그룹 제어 — 수정 (값)",
+            "IoT 프로토콜 > 프로토콜 항목 — 등록",
+            "IoT 프로토콜 > 프로토콜 항목 — 수정",
+            "IoT 프로토콜 > 프로토콜 항목 — 삭제",
+            "IoT 프로토콜 > 멀티 제어 POP 코드 — 수정",
+            "IoT 프로토콜 > ODM 모델 프로토콜 — 수정",
+            "IoT 프로토콜 > 프로토콜 META(ODM) — 삭제",
+            "IoT 프로토콜 > 프로토콜 META(ODM) — 등록",
+            "IoT 프로토콜 > 프로토콜 META(ODM) — 수정",
+            "IoT 프로토콜 > 제품별 프로토콜(ODM) — 등록",
+            "IoT 프로토콜 > 제품별 프로토콜(ODM) — 수정",
+            "IoT 프로토콜 > 제품별 프로토콜(ODM) — 삭제",
+            "IoT 프로토콜 > 제품별 프로토콜 — 등록",
+            "IoT 프로토콜 > 스마트진단 카테고리 — 등록",
+            "IoT 프로토콜 > 스마트진단 항목 값 — 삭제",
+            "IoT 프로토콜 > 스마트진단 항목 값 — 등록",
+            "IoT 프로토콜 > 스마트진단 항목 값 — 수정",
+            "IoT 프로토콜 > 스마트진단 값 — 삭제",
+            "IoT 프로토콜 > ODM 에러 코드 — 등록",
+            "IoT 프로토콜 > ODM 에러 코드 — 수정",
+            "IoT 프로토콜 > ODM 에러 코드 — 삭제",
+            "IoT 프로토콜 > 프로토콜 값 — 삭제",
+            "IoT 프로토콜 > 프로토콜 값 — 등록",
+            "IoT 프로토콜 > 프로토콜 값 — 수정",
+            "IoCareApp > 시스템 점검 — 등록",
+            "IoCareApp > 시스템 점검 — 수정",
+            "IoCareApp > 시스템 점검 — 삭제",
+            "IoCareApp > 앱 업데이트 — 삭제",
+            "IoCareApp > 앱 업데이트 — 등록",
+            "IoCareApp > 앱 업데이트 — 수정",
+            "IoCareApp > 제품 출시국가 — 등록",
+            "IoCareApp > 제품 출시국가 — 수정",
+            "IoCareApp > 제품 출시국가 — 삭제",
+            "IoCareApp > 제품 향지 — 등록",
+            "IoCareApp > 제품 향지 — 수정",
+            "IoCareApp > 제품 향지 — 삭제",
+            "IoCareApp > 고객센터 — 등록",
+            "IoCareApp > 고객센터 — 수정",
+            "IoCareApp > 고객센터 — 삭제",
+            "IoCareApp > 제품 카테고리 — 등록",
+            "IoCareApp > 제품 카테고리 — 수정",
+            "IoCareApp > 제품 카테고리 — 삭제",
+            "IoCareApp > 제품 카테고리 — 순서 변경",
+            "IoCareApp > FAQ — 등록",
+            "IoCareApp > FAQ — 수정",
+            "IoCareApp > FAQ — 삭제",
+            "IoCareApp > FAQ — 운영 반영",
+            "IoCareApp > FAQ — 순서 변경",
+            "IoCareApp > FAQ 카테고리 — 등록",
+            "IoCareApp > FAQ 카테고리 — 수정",
+            "IoCareApp > FAQ 카테고리 — 삭제",
+            "IoCareApp > FAQ 카테고리 — 운영 반영",
+            "IoCareApp > FAQ 카테고리 — 순서 변경",
+            "IoCareApp > 공지사항 — 등록",
+            "IoCareApp > 공지사항 — 수정",
+            "IoCareApp > 공지사항 — 삭제",
+            "IoCareApp > 오염원 — 등록",
+            "IoCareApp > 오염원 — 수정",
+            "IoCareApp > 오염원 — 삭제",
+            "IoCareApp > 문제 해결 가이드 — 등록",
+            "IoCareApp > 문제 해결 가이드 — 수정",
+            "IoCareApp > 문제 해결 가이드 — 삭제",
+            "IoCareApp > 소모품(컨텐츠) — 등록",
+            "IoCareApp > 소모품(컨텐츠) — 수정",
+            "IoCareApp > 소모품(컨텐츠) — 삭제",
+            "IoCareApp > 라이프스토리 키워드 — 등록",
+            "IoCareApp > 라이프스토리 키워드 — 삭제",
+            "IoCareApp > 라이프스토리 — 등록",
+            "IoCareApp > 라이프스토리 — 수정",
+            "IoCareApp > 라이프스토리 — 삭제",
+            "IoCareApp > 라이프스토리 — 운영 반영",
+            "IoCareApp > 제품 ODM 진단 — 삭제",
+            "IoCareApp > 제품 ODM 진단 — 등록",
+            "IoCareApp > 제품 기준 정보 — 수정",
+            "IoCareApp > 제품 기준 정보 — 복사",
+            "IoCareApp > 제품 기준 정보 — 삭제 (매뉴얼)",
+            "IoCareApp > 제품 기준 정보 — 운영 반영",
+            "IoCareApp > 제품 알림 노출 설정 — 수정",
+            "IoCareApp > 제품 알림 노출 설정 — 복사",
+            "IoCareApp > 제품 문제 해결 컨텐츠 — 수정",
+            "IoCareApp > 제품 문제 해결 컨텐츠 — 삭제",
+            "IoCareApp > 제품 문제 해결 컨텐츠 — 복사",
+            "IoCareApp > 제품 자동화 설정 — 수정",
+            "IoCareApp > 제품 자동화 설정 — 복사",
+            "IoCareApp > 제품 스마트 고장진단 — 수정 (수집 정보)",
+            "IoCareApp > 제품 스마트 고장진단 — 삭제 (내용)",
+            "IoCareApp > 제품 스마트 고장진단 — 등록 (내용)",
+            "IoCareApp > 제품 스마트 고장진단 — 삭제 (항목)",
+            "IoCareApp > 제품 스마트 고장진단 — 수정 (템플릿)",
+            "IoCareApp > 제품 스마트 고장진단 — 등록 (템플릿 복사)",
+            "IoCareApp > 제품 정기 살균 — 등록",
+            "IoCareApp > 제품 정기 살균 — 복사",
+            "IoCareApp > 제품 소모품 — 수정",
+            "IoCareApp > 제품 소모품 — 삭제",
+            "IoCareApp > 제품 소모품 — 복사",
+            "IoCareApp > 자동화 컨텐츠 — 등록",
+            "IoCareApp > 자동화 컨텐츠 — 수정",
+            "IoCareApp > 자동화 컨텐츠 — 삭제",
+            "IoCareApp > 자동화 컨텐츠 — 순서 변경",
+            "IoCareApp > 자동화 항목 — 등록",
+            "IoCareApp > 자동화 항목 — 수정",
+            "IoCareApp > 자동화 항목 — 삭제"
+          ],
+          "default": "Admin 관리 > 공통 코드 — 삭제"
+        },
+        {
+          "name": "path_args",
+          "label": "경로 값 (쉼표로 구분)",
+          "type": "text",
+          "show_if": {
+            "op": [
+              "Admin 관리 > IMS 공지사항 — 삭제",
+              "IoT 프로토콜 > 제품별 프로토콜(ODM) — 삭제",
+              "IoT 프로토콜 > ODM 에러 코드 — 삭제"
+            ]
+          },
+          "placeholder": "예: 12",
+          "help": "삭제할 항목 번호 등 주소에 들어가는 값"
+        },
+        {
+          "name": "query",
+          "label": "쿼리 (이름=값, 한 줄에 하나)",
+          "type": "textarea",
+          "placeholder": "faqSeq=12",
+          "help": "삭제 대상 지정 등. 필요 없으면 비움"
+        },
+        {
+          "name": "body",
+          "label": "본문 (JSON)",
+          "type": "textarea",
+          "placeholder": "{ … }",
+          "help": "등록·수정 내용. 비우고 미리보기를 누르면 이 작업의 본문 틀(필드 이름)을 보여 줍니다"
+        },
+        {
+          "name": "confirm_env",
+          "label": "운영 확인 — 운영에 반영하려면 '운영' 입력",
+          "type": "text",
+          "show_if": {
+            "env": "운영"
+          }
+        }
+      ]
+    },
+    {
+      "id": "change_run",
+      "label": "IMS에 반영",
+      "hidden": true,
+      "fields": []
+    },
+    {
+      "id": "login",
+      "label": "로그인",
+      "button": "로그인 창 열기",
+      "timeout": 330,
+      "confirm": "IMS 로그인 창을 엽니다. 추가 인증까지 마치면 자동으로 닫힙니다.",
+      "fields": [
+        {
+          "name": "env",
+          "label": "환경",
+          "type": "select",
+          "options": [
+            "개발",
+            "검증",
+            "운영"
+          ],
+          "default": "개발",
+          "help": "개발 = ims.iot.coway.dev / 검증 = ims.iot.coway.blue / 운영 = ims.iot.coway.com (환경마다 처음 한 번 로그인)"
+        }
+      ]
+    },
+    {
+      "id": "models",
+      "label": "모델 목록",
+      "hidden": true,
+      "fields": []
+    },
+    {
+      "id": "open_file",
+      "label": "파일 열기",
+      "hidden": true,
+      "fields": []
+    }
+  ]
+}

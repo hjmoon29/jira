@@ -363,7 +363,7 @@ def build_prompt(q, sources, parent, prev, ref, author):
     today = datetime.date.today().isoformat()
     P = [guide,
          f"\n\n# 이번 작업\n- 문서 제목: {spec_title(q)}\n- 제품/프로젝트: {q.get('name', '')}\n- 상위 페이지: {parent['title']} ({WIKI}/pages/viewpage.action?pageId={parent['id']})"
-         f"\n- 작성: {today} / {author} (업무 봇 정리 초안)"]
+         f"\n- 작성: {today} / {author} (IoT업무봇 정리 초안)"]
     if (q.get("notes") or "").strip():
         P.append(f"\n- 추가 요청 (반드시 반영):\n{q['notes'].strip()}")
     P.append(f"\n\n# 형식 예시 — '{ref['title']}' (storage 원문, 구조·매크로·스타일만 따르고 내용은 쓰지 말 것)\n<<<EXAMPLE\n{ref['body']['storage']['value']}\nEXAMPLE>>>")
@@ -439,7 +439,7 @@ def draft(q, log=print):
     open(base + ".prompt.txt", "w", encoding="utf-8").write(prompt)
     log(f"Claude 작성 중… (자료 {len(sources)}개, {len(prompt):,}자)")
     t0 = time.time()
-    r = run_claude(prompt, (q.get("model") or "").strip() or None, f"업무 봇: 기획 사양 정리 초안 ({spec_title(q)})")
+    r = run_claude(prompt, (q.get("model") or "").strip() or None, f"IoT업무봇: 기획 사양 정리 초안 ({spec_title(q)})")
     out = r.get("result") or ""
     open(base + ".raw.txt", "w", encoding="utf-8").write(out)
     m = re.search(r"<<<XML\s*(.*?)\s*XML>>>", out, re.S)
@@ -486,7 +486,7 @@ def publish(name):
     if same:
         cur = same[0]
         r = wiki("PUT", f"/content/{cur['id']}", {"id": cur["id"], "type": "page", "title": meta["title"], "version": {"number": cur["version"]["number"] + 1,
-                 "message": "업무 봇 기획 사양 정리 갱신"}, "body": {"storage": {"value": body, "representation": "storage"}}})
+                 "message": "IoT업무봇 기획 사양 정리 갱신"}, "body": {"storage": {"value": body, "representation": "storage"}}})
         how = f"기존 페이지 v{cur['version']['number']} → v{r['version']['number']} 갱신"
     else:
         r = wiki("POST", "/content", {"type": "page", "title": meta["title"], "space": {"key": sp}, "ancestors": [{"id": meta["parent"]["id"]}],

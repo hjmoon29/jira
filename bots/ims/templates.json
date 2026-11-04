@@ -1,0 +1,417 @@
+{
+ "bo/v1/contentMgmt/faq": {
+  "faqSeq": 0,
+  "contentTypeCode": "",
+  "categoryTypeCode": "",
+  "categoryTypeCodeNm": "",
+  "useYn": "",
+  "sortNo": 0,
+  "stgReflectionId": "",
+  "stgReflectionDate": "",
+  "prdReflectionId": "",
+  "prdReflectionDate": null,
+  "localeList": [
+   {
+    "faqSeq": 0,
+    "langCode": "",
+    "langCodeNm": "",
+    "title": ""
+   }
+  ],
+  "countryGroupList": [
+   {
+    "contentTypeCode": "",
+    "contentSeq": 0,
+    "countryGroupCode": "",
+    "countryGroupCodeNm": ""
+   }
+  ]
+ },
+ "bo/v1/contentMgmt/faqCategory": {
+  "categoryTypeCode": "",
+  "categoryTypeCodeNm": "",
+  "categoryTypeCodeNms": "",
+  "langCodes": "",
+  "langCodeNms": "",
+  "sortNo": 0,
+  "useYn": "",
+  "stgReflectionId": "",
+  "stgReflectionDate": "",
+  "prdReflectionId": "",
+  "prdReflectionDate": null
+ },
+ "bo/v1/contentMgmt/notice": {
+  "noticeSeq": 0,
+  "contentTypeCode": "",
+  "topPinnedYn": "",
+  "useYn": "",
+  "localeList": [
+   {
+    "noticeSeq": 0,
+    "langCode": "",
+    "langCodeNm": "",
+    "title": "",
+    "content": ""
+   }
+  ],
+  "countryGroupList": [
+   {
+    "contentTypeCode": "",
+    "contentSeq": 0,
+    "countryGroupCode": "",
+    "countryGroupCodeNm": ""
+   }
+  ]
+ },
+ "bo/v1/contentMgmt/pollution": {
+  "pollutionSeq": 0,
+  "imgUri": "",
+  "useYn": "",
+  "localeList": [
+   {
+    "pollutionSeq": 0,
+    "langCode": "",
+    "langCodeNm": "",
+    "pollutionNm": ""
+   }
+  ]
+ },
+ "bo/v1/contentMgmt/problemGuide": {
+  "problemGuideSeq": 0,
+  "useYn": "",
+  "prodCategoryCode": "",
+  "prodCategoryCodeNm": "",
+  "level": 0,
+  "childProblemGuideYn": "",
+  "memo": "",
+  "localeList": [
+   {
+    "problemGuideSeq": 0,
+    "langCode": "",
+    "langCodeNm": "",
+    "title": "",
+    "content": ""
+   }
+  ],
+  "regProdCount": 0,
+  "mappedProductNmList": []
+ },
+ "bo/v1/contentMgmt/supply": {
+  "supplySeq": 0,
+  "prodTypeCode": "",
+  "imgUri": "",
+  "visitYn": "",
+  "membershipYn": "",
+  "salesYn": "",
+  "guideYn": "",
+  "guideUrl": "",
+  "cleanBtnDisplayYn": "",
+  "replaceBtnDisplayYn": "",
+  "preFilterYn": "",
+  "preFilterBtnDisplayYn": "",
+  "preFilterCleanCycle": 0,
+  "sendDeviceYn": "",
+  "visitPushYn": "",
+  "visitPushReYn": "",
+  "membershipPushYn": "",
+  "membershipPushReYn": "",
+  "noMembershipPushYn": "",
+  "noMembershipPushReYn": "",
+  "westernMembershipPushYn": "",
+  "westernMembershipFilterPushReYn": "",
+  "westernMembershipNoFilterPushReYn": "",
+  "westernMembershipFilterTypeCode": "",
+  "useYn": "",
+  "localeList": [
+   {
+    "supplySeq": 0,
+    "langCode": "",
+    "langCodeNm": "",
+    "supplyNm": "",
+    "content": "",
+    "usageStartTooltip": "",
+    "replaceTooltip": ""
+   }
+  ],
+  "mappedProductNmList": []
+ },
+ "bo/v1/lifeStoryMgmt/keywordMgmt": {
+  "keywordSeq": 0,
+  "keywordProdCategoryCode": "",
+  "keywordProdCategoryNm": "",
+  "keywordItemCode": "",
+  "keywordItemNm": "",
+  "displayKeywordId": "",
+  "displayKeywordNm": "",
+  "useYn": "",
+  "keywordCode1": "",
+  "keywordNm1": "",
+  "keywordCode2": "",
+  "keywordNm2": "",
+  "keywordCode3": "",
+  "keywordNm3": "",
+  "keywordCode4": "",
+  "keywordNm4": "",
+  "keywordCode5": "",
+  "keywordNm5": "",
+  "keywordCode6": "",
+  "keywordNm6": ""
+ },
+ "bo/v1/routineMgmt/routine": {
+  "routineSeq": 0,
+  "imgUri": "",
+  "imgBase64": "",
+  "useYn": "",
+  "recommYn": "",
+  "notiMemberYn": "",
+  "successNotiYn": "",
+  "failNotiYn": "",
+  "execTimeTypeCode": "",
+  "timeResvTypeCode": "",
+  "timeResvCrontab": "",
+  "execTypeCode": "",
+  "sortNo": 0,
+  "routineSupportProductCnt": 0,
+  "categoryCodes": "",
+  "categoryCodeNms": "",
+  "devModelCodes": "",
+  "title": "",
+  "subTitle": "",
+  "recommDesc": "",
+  "regPossibleYn": "",
+  "routineLocaleList": null,
+  "routineConditionItemList": null,
+  "routineExecItemGroupList": null,
+  "routineRecommList": null,
+  "routineProductList": null
+ },
+ "bo/v1/routineMgmt/routineItem": {
+  "routineItemSeq": 0,
+  "prodCategoryCode": "",
+  "prodCategoryCodeNm": "",
+  "prodTypeCode": "",
+  "prodTypeCodeNm": "",
+  "protocolTypeCode": "",
+  "protocolTypeCodeNm": "",
+  "valueSeq": 0,
+  "itemId": "",
+  "memo": "",
+  "silverCareYn": "",
+  "routineUseCnt": 0,
+  "routineItemLocaleList": [
+   {
+    "routineItemSeq": 0,
+    "langCode": "",
+    "itemNm": "",
+    "valueNm": ""
+   }
+  ]
+ },
+ "bo/v1/common/appCountry": {
+  "countryGroupCode": "",
+  "countryGroupCodeNm": "",
+  "countryCode": "",
+  "countryCodeNm": "",
+  "useYn": "",
+  "productRegions": null
+ },
+ "bo/v1/common/appCountryProductRegion": {
+  "countryGroupCode": "",
+  "productRegionCode": "",
+  "countryGroupCodeNm": "",
+  "productRegionCodeNm": "",
+  "useYn": ""
+ },
+ "bo/v1/common/appCustomerService": {
+  "countryCode": "",
+  "countryCodeNm": "",
+  "officialSiteYn": "",
+  "officialSiteUrl": "",
+  "serviceCallYn": "",
+  "serviceCallNumber": "",
+  "emailInquiryYn": "",
+  "inquiryEmail": "",
+  "faqSiteYn": "",
+  "faqSiteUrl": "",
+  "warrantySiteYn": "",
+  "warrantySiteUrl": "",
+  "useYn": ""
+ },
+ "bo/v1/common/appProductCategory": {
+  "sortNo": 0,
+  "prodCategoryCode": "",
+  "prodCategoryNm": "",
+  "prodTypeList": [
+   {
+    "prodTypeCode": "",
+    "prodTypeNm": ""
+   }
+  ],
+  "prodCategoryLocaleList": [
+   {
+    "langCode": "",
+    "langCodeNm": "",
+    "prodCategoryNm": ""
+   }
+  ],
+  "countryGroupCodeList": [],
+  "useYn": ""
+ },
+ "bo/v1/appMgmt/version": {
+  "versionSeq": 0,
+  "osTypeCode": "",
+  "osTypeCodeNm": "",
+  "fromMajorVersion": 0,
+  "fromMinorVersion": 0,
+  "fromPatchVersion": 0,
+  "toMajorVersion": 0,
+  "toMinorVersion": 0,
+  "toPatchVersion": 0,
+  "updateTypeCode": "",
+  "updateTypeCodeNm": "",
+  "updateNm": "",
+  "description": "",
+  "useYn": ""
+ },
+ "bo/v1/appMgmt/appSystemMaint": {
+  "maintSeq": 0,
+  "contentTypeCode": "",
+  "scheduledMaintStart": "",
+  "scheduledMaintEnd": "",
+  "maintDisplayStart": "",
+  "maintDisplayEnd": "",
+  "useYn": "",
+  "noExecAreaCode": "",
+  "noExecAreaCodeNm": "",
+  "title": "",
+  "memo": "",
+  "countryGroupNms": "",
+  "langCodeNms": "",
+  "contentCountryGroupList": [
+   {
+    "contentTypeCode": "",
+    "contentSeq": 0,
+    "countryGroupCode": "",
+    "countryGroupCodeNm": ""
+   }
+  ],
+  "appSystemMaintLocaleList": [
+   {
+    "maintSeq": 0,
+    "langCode": "",
+    "langCodeNm": "",
+    "maintDesc": "",
+    "limitedService": ""
+   }
+  ]
+ },
+ "bo/v1/productMgmt/notiConfig": {
+  "devModelCode": "",
+  "configUseYn": "",
+  "userId": "",
+  "itemList": [
+   {
+    "alarmCode": "",
+    "groupCode": "",
+    "msgCode": "",
+    "notiItemNm": "",
+    "pushOffYn": "",
+    "useYn": "",
+    "extraOptionYn": "",
+    "sdProtocolList": null
+   }
+  ]
+ },
+ "bo/v1/productMgmt/supply": {
+  "devModelCode": "",
+  "useYn": "",
+  "visitSupplyList": [],
+  "membershipSupplyList": []
+ },
+ "bo/v1/productMgmt/sterilizationConfig": {
+  "devModelCode": "",
+  "savedStrlList": {
+   "devModelCode": ""
+  },
+  "allStrlList": [
+   {
+    "strlInfo": {},
+    "devModelCode": "",
+    "isSaved": false
+   }
+  ],
+  "useYn": false,
+  "isSterilizationSupported": false
+ },
+ "bo/v1/productMgmt/baseInfo": {
+  "devModelCode": "",
+  "manualYn": "",
+  "manualUrl": "",
+  "manualFileNm": "",
+  "manualFileSize": 0,
+  "pairingImgCnt": 0,
+  "stgReflectionId": "",
+  "stgReflectionDate": null,
+  "prdReflectionId": "",
+  "prdReflectionDate": null,
+  "localeContentList": null
+ },
+ "api/v1/admin/notice": {
+  "noticeSeq": 0,
+  "noticeType": "",
+  "title": "",
+  "writer": ""
+ },
+ "api/v1/device/popCode": {
+  "devModelCode": "",
+  "svcTgtSeq": 0,
+  "modelCd": "",
+  "devModelSeq": 0,
+  "gwCnctId": "",
+  "description": "",
+  "prodFamilyId": "",
+  "prodFamilyNm": "",
+  "useYn": "",
+  "makrDevModelCd": "",
+  "makrDevModelNm": "",
+  "wifiProd": "",
+  "bleProd": "",
+  "sdProd": "",
+  "sapOpnTrans": "",
+  "wifiType": "",
+  "cntryCdAlpha3": "",
+  "cntryCdAlpha2": "",
+  "svcCode": "",
+  "reflectionFlag": "",
+  "reflectionDate": "",
+  "reflectionTypeCode": "",
+  "ssid": "",
+  "bleSsid": "",
+  "moduleType": "",
+  "featureType": "",
+  "sensingCycle": 0,
+  "isRefModel": "",
+  "refModelCode": "",
+  "isPba": "",
+  "isSensitive": "",
+  "isDartUse": "",
+  "isUseV1": "",
+  "isUseV2": "",
+  "isWifiFota": "",
+  "isBleFota": "",
+  "isEasyPairing": "",
+  "easyPairingType": "",
+  "isMqttBiTopic": "",
+  "productName": "",
+  "productModel": "",
+  "isAppSearchWifiAp": "",
+  "createdId": "",
+  "createdAt": 0,
+  "updatedId": "",
+  "updatedAt": 0,
+  "erpCntry": "",
+  "otaPlatformType": "",
+  "platformCode": "",
+  "extPlatformProductId": ""
+ }
+}

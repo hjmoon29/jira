@@ -1,0 +1,32 @@
+{
+  "name": "Figma UX 기획봇",
+  "icon": "🎨",
+  "order": 13,
+  "group": "기획 업무",
+  "tagline": "요청사항대로 IoCare+ 화면 기획",
+  "description": "요청사항과 참고할 IoCare+ Figma 화면을 주면, 기존 화면의 구조·문구·디스크립션 방식을 따라 UX 설계안(화면 목록·구성·정책)을 만듭니다. 설계안을 확인하고 필요하면 수정 요청을 한 뒤 [Figma에 그리기]를 누르면, 첫 번째 참고 주소 파일의 '작업안(UX봇)' 페이지에 섹션을 만들어 화면을 그립니다. 다른 페이지는 건드리지 않습니다.",
+  "actions": [
+    {
+      "id": "plan",
+      "label": "설계안 만들기",
+      "button": "설계안 만들기",
+      "timeout": 3600,
+      "fields": [
+        {"name": "title", "label": "작업 제목", "type": "text", "required": true, "placeholder": "매트리스 수면 리포트 공유 기능 추가"},
+        {"name": "request", "label": "요청사항", "type": "textarea", "required": true,
+         "placeholder": "예) 매트리스 리포트 화면에서 주간 리포트를 가족 구성원에게 공유하는 기능을 추가해 줘. 공유 버튼 위치, 공유 대상 선택 바텀시트, 공유 완료 토스트까지.",
+         "help": "무엇을, 왜, 어떤 범위까지 바꾸는지 적을수록 정확합니다. 정책이 정해진 게 있으면 같이 적어 주세요."},
+        {"name": "figma", "label": "참고 IoCare+ Figma 화면 주소 (한 줄에 하나) — 첫 주소의 파일에 그립니다", "type": "textarea", "required": true,
+         "placeholder": "https://www.figma.com/design/dSRZfxlfwHhwPFPtg0Ei7y/?node-id=17002-60",
+         "help": "node-id가 붙은 주소면 그 페이지·섹션만, 파일 주소면 'SPEC 제외'·표지·작업안 페이지를 뺀 전체를 읽습니다. 관련 화면만 node-id로 주는 게 빠르고 정확합니다."},
+        {"name": "wiki", "label": "참고 위키 페이지 (선택, 한 줄에 하나)", "type": "textarea", "placeholder": "https://wiki.coway.com/pages/viewpage.action?pageId=…"},
+        {"name": "notes", "label": "추가 요청 (선택)", "type": "textarea", "placeholder": "예) 팝업 문구는 공통 팝업 규칙대로, 화면은 5개 이내로",
+         "help": "설계안은 3~10분쯤 걸립니다. Figma에는 [Figma에 그리기]를 누르기 전까지 아무것도 그리지 않습니다."}
+      ]
+    },
+    {"id": "plans", "label": "설계안 목록", "auto": true, "timeout": 30, "fields": []},
+    {"id": "open", "label": "설계안 열기", "hidden": true, "timeout": 30},
+    {"id": "revise", "label": "설계안 수정", "hidden": true, "timeout": 3600},
+    {"id": "draw", "label": "Figma에 그리기", "hidden": true, "timeout": 3600}
+  ]
+}
