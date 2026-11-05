@@ -376,6 +376,17 @@ input[type=text], input[type=date], select, textarea { border-radius: 4px; backg
 .status { border-radius: 4px; }
 .kpi { border-radius: 4px; border-top: 3px solid var(--brand-2); }
 pre.out { border-radius: 4px; }
+
+/* 반응형: 가로 여유가 있으면 본문을 넓게 (2026-11-05) */
+main { max-width: 1100px; }
+@media (min-width: 1280px) {
+  main { max-width: 1500px; }
+  /* 짧은 입력란(한 줄·선택·날짜·파일)은 여러 칸으로, 긴 입력·목록·버튼 줄은 한 줄 전체 */
+  #form { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px 20px; align-items: start; }
+  #form > :not(.row:has(> input[type=text], > input[type=date], > select, > input[type=file])) { grid-column: 1 / -1; }
+}
+@media (min-width: 1600px) { main { max-width: 1840px; } }
+.app.mini main { max-width: none; }
 </style>
 </head>
 <body>
@@ -1569,7 +1580,16 @@ async function loadHistory() {
   $("hist").innerHTML = h.length ? h.map(r => `<div><time>${new Date(r.t * 1000).toLocaleString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })}</time>
     <span>${r.ok ? "✅" : "⚠️"} ${esc(r.bot)} · ${esc(r.action)} <em>${esc(r.summary)}</em></span><em>${r.sec}초</em></div>`).join("")
     : '<p class="empty">아직 실행 기록이 없습니다.</p>';
+  fitHist();
 }
+// 최근 실행: 5건 높이만 보이고 나머지는 목록 안에서 스크롤
+function fitHist() {
+  const el = $("hist"), rows = el.children;
+  if (!el.offsetParent) return;
+  if (rows.length <= 5) { el.style.maxHeight = ""; return; }
+  el.style.maxHeight = (rows[4].offsetTop + rows[4].offsetHeight - el.offsetTop + 4) + "px";
+}
+addEventListener("resize", () => { clearTimeout(fitHist.t); fitHist.t = setTimeout(fitHist, 150); });
 
 ["bots", "botsys"].forEach(n => $(n).addEventListener("click", e => { const b = e.target.closest(".bot"); if (b) selectBot(b.dataset.id); }));
 // 왼쪽 메뉴 접기/펴기 (브라우저에 기억, Ctrl+B)
