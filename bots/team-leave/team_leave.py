@@ -40,6 +40,108 @@ class LoginNeeded(BotError):
         super().__init__(" · ".join(SITE_NAMES[x] for x in self.sites) + " 로그인이 필요합니다.")
 
 
+# ---------- 실행 중지 ----------
+def _procs():
+    """[(pid, ppid, 명령줄)] — 이 PC에서 실행 중인 모든 프로세스"""
+    import subprocess
+    if sys.platform == "win32":
+        ps = ("Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,CommandLine | "
+              "ConvertTo-Json -Compress")
+        p = subprocess.run(["powershell", "-NoProfile", "-Command", ps], capture_output=True, text=True,
+                           encoding="utf-8", errors="replace")
+        try:
+            rows = json.loads(p.stdout or "[]")
+        except ValueError:
+            raise BotError("실행 중인 프로그램 목록을 읽지 못했습니다: " + (p.stderr or p.stdout)[-300:])
+        rows = rows if isinstance(rows, list) else [rows]
+        return [(r["ProcessId"], r["ParentProcessId"], r.get("CommandLine") or "") for r in rows]
+    p = subprocess.run(["ps", "-axo", "pid=,ppid=,command="], capture_output=True, text=True)
+    out = []
+    for line in p.stdout.splitlines():
+        parts = line.split(None, 2)
+        if len(parts) >= 2:
+            out.append((int(parts[0]), int(parts[1]), parts[2] if len(parts) > 2 else ""))
+    return out
+
+
+def stop(log=print):
+    """이 봇이 하고 있는 일을 모두 멈춘다: 화면에서 누른 기능(지금 확인·미리보기·로그인), 평일 자동 확인(auto.py),
+    그리고 그 기능들이 띄운 브라우저(전용 프로필 창). 반환: 멈춘 항목 설명 목록"""
+    import signal, subprocess
+    me = os.getpid()
+    norm = lambda s: s.replace("\\", "/").lower()
+    here, prof = norm(HERE), norm(PROFILE)
+    procs = _procs()
+    parent = {pid: ppid for pid, ppid, _ in procs}
+    mine = set()  # 나 자신과 내 부모(허브 서버 등)는 건드리지 않는다
+    x = me
+    while x and x not in mine:
+        mine.add(x)
+        x = parent.get(x)
+    bots, browsers = [], []
+    for pid, _, cmd in procs:
+        c = norm(cmd)
+        if pid in mine or not c:
+            continue
+        if "python" in c and here in c and ("adapter.py" in c or "auto.py" in c):
+            what = "자동 확인" if "auto.py" in c else {"run": "지금 확인", "preview": "미리보기", "login": "로그인"}.get(c.split()[-1].strip('"'), "실행 중 기능")
+            bots.append((pid, what))
+        elif prof in c:
+            browsers.append(pid)
+    done = []
+    if sys.platform == "win32":
+        subprocess.run(["schtasks", "/end", "/tn", TASK_NAME], capture_output=True)  # 작업 스케줄러에서 도는 중이면 그것도 끝냄
+        for pid, what in bots:  # /T: 그 기능이 띄운 브라우저·드라이버까지 함께
+            # 하위 브라우저가 먼저 닫히면 taskkill 이 0이 아닌 값을 돌려주므로, 결과는 아래에서 실제로 사라졌는지로 판단
+            subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)], capture_output=True)
+        time.sleep(1)
+        now = _procs()
+        left = {p for p, _, _ in now}
+        for pid, what in bots:
+            done.append(f"{what} 중지 (PID {pid})" if pid not in left else f"{what} 중지 실패 (PID {pid}) — 작업 관리자에서 종료해 주세요")
+        closed = 0
+        for _ in range(3):  # 중지 직전에 새로 뜬 창이 있을 수 있어 목록을 다시 읽어 전용 프로필 브라우저를 모두 닫는다
+            br = {pid: ppid for pid, ppid, cmd in now if pid not in mine and prof in norm(cmd)}
+            roots = [p for p, pp in br.items() if pp not in br]
+            if not roots:
+                break
+            for pid in roots:
+                subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)], capture_output=True)
+            closed += len(roots)
+            time.sleep(1)
+            now = _procs()
+        if closed:
+            done.append(f"남은 브라우저 창 닫음 ({closed}개)")
+    else:
+        for pid, what in bots:
+            subprocess.run(["pkill", "-TERM", "-P", str(pid)], capture_output=True)
+            try:
+                os.kill(pid, signal.SIGTERM)
+                done.append(f"{what} 중지 (PID {pid})")
+            except OSError:
+                pass
+        for pid in browsers:
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except OSError:
+                pass
+        if browsers:
+            done.append(f"남은 브라우저 창 닫음 ({len(browsers)}개)")
+    if bots:
+        os.makedirs(DIR, exist_ok=True)
+        with open(LOG, "a", encoding="utf-8") as f:
+            f.write(f"{dt.datetime.now(KST):%Y-%m-%d %H:%M:%S} 사용자가 실행 중지: {', '.join(w for _, w in bots)}\n")
+    return done
+
+
+try:  # 화면 진행률 (bots/hub_progress.py) — 없거나 허브 밖 실행이면 아무것도 안 함
+    sys.path.insert(0, os.path.dirname(HERE))
+    from hub_progress import progress
+except ImportError:  # pragma: no cover
+    def progress(*a, **k):
+        pass
+
+
 def config():
     with open(CONFIG, encoding="utf-8") as f:
         return json.load(f)
@@ -197,6 +299,8 @@ def login(log=print, sites=("works", "google")):
         end = time.time() + 600
         ok = False
         while time.time() < end:
+            left = int(end - time.time())
+            progress(0, f"🔑 로그인 기다리는 중 — 열린 창에서 {', '.join(SITE_NAMES[x] for x in sites)} 로그인 (남은 {left // 60}:{left % 60:02d})")
             try:
                 if all(pg.is_closed() for pg in pages.values()):
                     break  # 사용자가 창을 닫음
@@ -348,14 +452,17 @@ def _check(log=print, register=True, preflight=False):
     today = dt.datetime.now(KST).date()
     done_keys = {(d["date"], d["name"], d["status"]) for d in st.get("done", [])}
     people, added, errors = [], [], []
+    progress(3, "브라우저 준비 중 (처음이면 프로그램 설치)")
     with _playwright(log)() as p:
         ctx = _open(p, log=log)
         page = ctx.pages[0] if ctx.pages else ctx.new_page()
         try:
             if preflight:  # 두 곳을 한 번에 확인해 로그인 창을 한 번만 띄운다
+                progress(10, "네이버웍스·구글 로그인 확인 중")
                 miss = _missing_logins(page, c)
                 if miss:
                     raise LoginNeeded(miss)
+            progress(30, "네이버웍스 주소록에서 팀원 상태 읽는 중")
             for disp in read_team(page, c, log):
                 name, status = parse_status(disp, c["statuses"])
                 people.append({"name": name, "display": disp, "status": status})
@@ -366,8 +473,10 @@ def _check(log=print, register=True, preflight=False):
                 if x not in todo:
                     x["result"] = "이미 등록"
             # 캘린더에 이미 있는 일정(다른 사람이 직접 넣은 것 포함)은 건너뜀
+            progress(55, f"구글 캘린더 오늘 일정 확인 중 (등록 대상 {len(todo)}명)")
             existing = day_events(page, today) if todo else []
-            for x in todo:
+            for i, x in enumerate(todo):
+                progress(65 + 30 * i / max(len(todo), 1), f"캘린더 등록 중 ({i + 1}/{len(todo)}) {x['name']}")
                 key = (today.isoformat(), x["name"], x["status"])
                 title = c.get("title_format", "{name} {status}").format(name=x["name"], status=x["status"])
                 if already_there(existing, x["name"], x["status"]):

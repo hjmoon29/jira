@@ -237,7 +237,12 @@ def revise(jid, feedback):
     d = jdir(jid)
     prev = open(os.path.join(d, f"v{len(job['versions'])}.xml"), encoding="utf-8").read()
     transcript = open(os.path.join(d, "transcript.txt"), encoding="utf-8").read()
-    write_version(job, build_prompt(job, transcript, job.get("author") or author_name(), prev, feedback.strip()), feedback.strip())
+    sys.path.insert(0, os.path.dirname(HERE))  # bots/ (hub_progress)
+    from hub_progress import progress, waiting
+    progress(5, "회의록 수정 준비")
+    prompt = build_prompt(job, transcript, job.get("author") or author_name(), prev, feedback.strip())
+    est = sum(v.get("sec") or 0 for v in job["versions"]) / max(len(job["versions"]), 1) or 150
+    waiting(8, 97, f"Claude가 회의록 v{len(job['versions']) + 1} 수정 중", lambda: write_version(job, prompt, feedback.strip()), est)
     save(job)
     return job
 

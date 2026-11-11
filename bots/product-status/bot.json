@@ -6,12 +6,50 @@
   "tagline": "담당 제품의 단계별 진행 현황표",
   "description": "내가 담당하는 제품의 제품명·모델명과 킥오프부터 출시까지 단계별 진행 여부(킥오프·DPP·상품화 착수서·IoT서비스 기능정의·IoT 기능정의서·기획 사양 전달·Figma 화면기획서·서버/앱 개발·IMS 등록·인증용 앱·QA·양산인정·출시)를 한 표로 봅니다. 칸을 누르면 상태·날짜·메모·링크를 직접 입력하고 고칠 수 있습니다. Jira에서 내 담당 제품을 불러오거나, 에픽 하위 문서 상태로 빈칸을 채울 수도 있습니다(직접 입력한 칸은 덮어쓰지 않음).",
   "actions": [
-    {"id": "board", "label": "진행 현황", "auto": true, "timeout": 30, "fields": []},
-    {"id": "save_product", "label": "제품 저장", "hidden": true, "timeout": 30},
-    {"id": "delete_product", "label": "제품 삭제", "hidden": true, "timeout": 30},
-    {"id": "move_product", "label": "제품 순서", "hidden": true, "timeout": 30},
-    {"id": "save_cell", "label": "진행 상태 저장", "hidden": true, "timeout": 30},
-    {"id": "import_jira", "label": "Jira에서 내 제품 불러오기", "hidden": true, "timeout": 120},
-    {"id": "jira_fill", "label": "Jira 하위 문서로 채우기", "hidden": true, "timeout": 600}
+    {
+      "id": "board",
+      "label": "진행 현황",
+      "auto": true,
+      "timeout": 30,
+      "fields": []
+    },
+    {
+      "id": "save_product",
+      "label": "제품 저장",
+      "hidden": true,
+      "timeout": 30
+    },
+    {
+      "id": "delete_product",
+      "label": "제품 삭제",
+      "hidden": true,
+      "timeout": 30
+    },
+    {
+      "id": "move_product",
+      "label": "제품 순서",
+      "hidden": true,
+      "timeout": 30
+    },
+    {
+      "id": "save_cell",
+      "label": "진행 상태 저장",
+      "hidden": true,
+      "timeout": 30
+    },
+    {
+      "id": "import_jira",
+      "label": "Jira에서 내 제품 불러오기",
+      "hidden": true,
+      "timeout": 120
+    },
+    {
+      "id": "jira_fill",
+      "label": "Jira 하위 문서로 채우기",
+      "hidden": true,
+      "timeout": 600,
+      "progress": true,
+      "progress_tab": "board"
+    }
   ]
 }

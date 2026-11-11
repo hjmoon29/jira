@@ -51,6 +51,17 @@ def login(q):
         summary="로그인 완료" if ok else "로그인 시간 초과")
 
 
+def stop(q):
+    try:
+        done = tl.stop()
+    except tl.BotError as e:
+        out(ok=False, text=str(e), summary="중지 실패")
+    if not done:
+        out(ok=True, headline="ℹ️ 실행 중인 기능이 없습니다", text="지금 확인·미리보기·로그인·자동 확인 중 실행 중인 것이 없습니다.", summary="실행 중인 기능 없음")
+    out(ok=True, headline="⏹ 실행을 중지했습니다", text="\n".join(done) + "\n\n이미 등록된 일정은 그대로 남아 있습니다. 필요하면 '지금 확인'으로 다시 실행하세요.",
+        summary="중지: " + ", ".join(done)[:110])
+
+
 def settings_init(q):
     c = tl.config()
     s = tl.schedule_status()
@@ -78,4 +89,4 @@ if __name__ == "__main__":
     action = sys.argv[1] if len(sys.argv) > 1 else ""
     q = json.loads(sys.stdin.read() or "{}")
     {"board": board, "run": run, "preview": preview, "login": login, "settings_init": settings_init,
-     "settings": settings}.get(action, lambda q: out(ok=False, text="알 수 없는 기능"))(q)
+     "settings": settings, "stop": stop}.get(action, lambda q: out(ok=False, text="알 수 없는 기능"))(q)

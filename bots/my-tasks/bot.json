@@ -32,7 +32,9 @@
           "type": "checkbox",
           "default": false
         }
-      ]
+      ],
+      "progress": true,
+      "progress_tab": "board"
     },
     {
       "id": "settings",

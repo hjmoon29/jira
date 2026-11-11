@@ -6,6 +6,8 @@
 - Jira 연동(선택): 내가 담당인 '큰틀' 에픽을 제품으로 불러오기, 에픽 하위 문서 상태로 빈칸 채우기
 """
 import datetime, glob, json, os, re, shutil, sys, time, uuid
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # bots/ (hub_progress)
+from hub_progress import progress  # noqa: E402  화면 진행률 게이지
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RUNS = os.environ.get("BOT_HUB_RUNS") or os.path.join(HERE, "..", "..", "runs")
@@ -240,10 +242,15 @@ def jira_fill():
     stages = cfg()["stages"]
     d = load()
     log, filled = [], 0
+    targets = [p for p in d["products"] if (p.get("epic") or "").strip()]
+    progress(3, f"Jira 확인 준비 (에픽 있는 제품 {len(targets)}개)")
+    done_n = 0
     for p in d["products"]:
         epic = (p.get("epic") or "").strip()
         if not epic:
             continue
+        progress(5 + 88 * done_n / max(len(targets), 1), f"{p['name']} 하위 문서 확인 중 ({done_n + 1}/{len(targets)})")
+        done_n += 1
         try:
             try:  # 하위 문서가 에픽 링크 또는 상위(parent)로 묶여 있음
                 kids = jt.search(f'"Epic Link" = {epic} OR parent = {epic}', "summary,status,resolutiondate", 500)
@@ -281,6 +288,7 @@ def jira_fill():
                 filled += 1
                 log.append(f"{p['name']} · {s['label']} → {st} ({len(hits)}건)")
         p["updated"] = now()
+    progress(95, "저장 중")
     d["jira_at"] = now()
     touch(d)
     save(d)

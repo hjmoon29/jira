@@ -29,11 +29,24 @@ def lock():
             time.sleep(10)
 
 
+def past_draft_sec():
+    xs = []
+    for d in os.listdir(mn.DIR) if os.path.isdir(mn.DIR) else []:
+        try:
+            j = mn.load(d)
+        except Exception:  # noqa: BLE001
+            continue
+        v = (j.get("versions") or [{}])[0]
+        if v.get("sec"):
+            xs.append(v["sec"])
+    return (sum(xs[-8:]) / len(xs[-8:])) if xs else 150
+
+
 def main(jid):
     job = mn.load(jid)
 
     def setp(p, msg):
-        job.update(progress=round(p, 1), message=msg, beat=time.time())
+        job.update(progress=round(p, 1), pct=round(2 + p * 0.78, 1), message=msg, beat=time.time())
         mn.save(job)
     try:
         tp = os.path.join(mn.DIR, jid, "transcript.txt")
@@ -49,11 +62,33 @@ def main(jid):
                 raise mn.BotError("음성에서 말소리를 찾지 못했습니다 (파일이 비었거나 소리가 너무 작음)")
             open(tp, "w", encoding="utf-8").write(text)
             job.update(stt_sec=round(time.time() - t0), duration=dur, chars=len(text))
-        job.update(status="drafting", progress=100, message="Claude가 회의록을 정리하는 중… (보통 1~5분)", beat=time.time())
+        job.update(status="drafting", progress=100, pct=80, message="Claude가 회의록을 정리하는 중… (보통 1~5분)", beat=time.time(),
+                   draft_started=time.time())
         mn.save(job)
-        mn.draft(job)
+        # 정리 단계는 끝을 알 수 없으므로 지난 회의록들의 정리 시간 평균으로 80→99% 를 천천히 채운다 (beat 도 갱신)
+        import math, threading
+        est = past_draft_sec()
+        stop = threading.Event()
+
+        def tick():
+            t0 = time.time()
+            while not stop.wait(3):
+                sec = time.time() - t0
+                cur = mn.load(jid)
+                if cur.get("status") != "drafting":
+                    return
+                cur.update(pct=round(80 + 19 * (1 - math.exp(-sec / est * 1.6)), 1), beat=time.time(),
+                           message=f"Claude가 회의록을 정리하는 중… {int(sec)}초 (보통 약 {max(1, round(est / 60))}분)")
+                mn.save(cur)
+        th = threading.Thread(target=tick, daemon=True)
+        th.start()
+        try:
+            mn.draft(job)
+        finally:
+            stop.set()
+            th.join(10)  # 진행률 저장이 끝난 뒤에 최종 상태를 저장해야 '정리 중'으로 덮어쓰이지 않음
         last = job["versions"][-1]
-        job.update(status="ready", message=last.get("error") or "", beat=time.time())
+        job.update(status="ready", pct=100, message=last.get("error") or "", beat=time.time())
         mn.save(job)
     except Exception as e:  # noqa: BLE001
         job.update(status="error", message=str(e)[:500], beat=time.time())

@@ -38,6 +38,7 @@
     {"id": "qa", "label": "QA", "group": "검증", "jira": ["QA"]},
     {"id": "int_test", "label": "통합테스트", "group": "검증", "jira": ["통합테스트"]},
     {"id": "mass", "label": "양산인정", "group": "출시", "jira": ["양산"]},
-    {"id": "release", "label": "출시·운영 배포", "group": "출시", "jira": ["출시", "운영 배포"]}
+    {"id": "release", "label": "출시", "group": "출시", "help": "제품 출시(주문접수) 일정 — 상품기획 프로젝트 개요·착수서 기준", "jira": ["출시"]},
+    {"id": "deploy", "label": "운영 배포", "group": "출시", "help": "IoCare+ 앱·서버 운영 배포(앱 오픈) 일정 — 위키 QA/배포 예정 일정 기준", "jira": ["운영 배포", "운영배포", "앱 오픈", "앱오픈"]}
   ]
 }

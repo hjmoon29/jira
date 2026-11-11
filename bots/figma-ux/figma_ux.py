@@ -12,6 +12,8 @@ import datetime, json, os, re, subprocess, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "spec-doc"))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # bots/ (hub_progress)
+from hub_progress import progress, stage, waiting  # noqa: E402  화면 진행률 게이지
 import spec_doc as sd  # noqa: E402
 
 BotError = sd.BotError
@@ -55,10 +57,14 @@ def target_key(q):
 
 def collect(q, log):
     srcs = []
-    for u in lines(q.get("figma")):
+    figs, wikis = lines(q.get("figma")), lines(q.get("wiki"))
+    n = max(len(figs) + len(wikis), 1)
+    for i, u in enumerate(figs):
+        progress(3 + 32 * i / n, f"Figma 읽는 중 ({i + 1}/{n})")
         log(f"Figma 읽는 중: {u}")
         srcs.append(sd.figma_source(u))
-    for u in lines(q.get("wiki")):
+    for i, u in enumerate(wikis, len(figs)):
+        progress(3 + 32 * i / n, f"위키 읽는 중 ({i + 1}/{n})")
         log(f"위키 읽는 중: {u}")
         srcs.append(sd.wiki_source(sd.wiki_page(sd.page_id(u)), "참고"))
     return srcs
@@ -146,7 +152,8 @@ def plan(q, log=print):
     prompt = plan_prompt(q, srcs)
     log(f"Claude 설계 중… (자료 {len(srcs)}개, {len(prompt):,}자)")
     t0 = time.time()
-    r = sd.run_claude(prompt, (q.get("model") or "").strip() or None, f"IoT업무봇: Figma UX 설계안 ({q['title'].strip()})")
+    r = waiting(35, 97, f"Claude가 설계안 작성 중 (자료 {len(srcs)}개)",
+                lambda: sd.run_claude(prompt, (q.get("model") or "").strip() or None, f"IoT업무봇: Figma UX 설계안 ({q['title'].strip()})"), past_sec("plan", 240))
     p = check_bases(parse_plan(r.get("result") or ""), src_text(srcs))
     doc = {"name": name, "title": q["title"].strip(), "request": q["request"].strip(), "notes": q.get("notes") or "",
            "figma": lines(q.get("figma")), "wiki": lines(q.get("wiki")), "target": key, "created": time.strftime("%Y-%m-%d %H:%M"),
@@ -170,7 +177,8 @@ def revise(q, log=print):
     prompt = plan_prompt(doc, [], prev, fb) + srcs_txt
     log(f"Claude 수정 중… (v{len(doc['versions']) + 1})")
     t0 = time.time()
-    r = sd.run_claude(prompt, None, f"IoT업무봇: Figma UX 설계안 수정 ({doc['title']})")
+    r = waiting(5, 97, f"Claude가 설계안 v{len(doc['versions']) + 1} 수정 중",
+                lambda: sd.run_claude(prompt, None, f"IoT업무봇: Figma UX 설계안 수정 ({doc['title']})"), past_sec("plan", 240))
     doc["versions"].append({"v": len(doc["versions"]) + 1, "at": time.strftime("%Y-%m-%d %H:%M"), "feedback": fb,
                             "sec": round(time.time() - t0), "cost": r.get("total_cost_usd"), "plan": check_bases(parse_plan(r.get("result") or ""), srcs_txt)})
     save(doc["name"], doc)
@@ -218,7 +226,10 @@ def draw(q, log=print):
            "--tools", "ReadMcpResourceTool", "--allowedTools", " ".join(["ReadMcpResourceTool"] + FIGMA_TOOLS)]
     env = dict(os.environ, CLAUDE_CODE_MAX_OUTPUT_TOKENS="32000")
     t0 = time.time()
-    p = subprocess.run(cmd, input=draw_prompt(doc, ver), capture_output=True, text=True, encoding="utf-8", timeout=3300, env=env)
+    n_scr = len(ver["plan"]["screens"])
+    p = waiting(3, 97, f"Claude가 Figma에 그리는 중 (화면 {n_scr}개)",
+                lambda: subprocess.run(cmd, input=draw_prompt(doc, ver), capture_output=True, text=True, encoding="utf-8", timeout=3300, env=env),
+                past_sec("draw", 120 * n_scr, per=n_scr))
     try:
         r = json.loads(p.stdout)
     except ValueError:
@@ -237,6 +248,29 @@ def draw(q, log=print):
     doc["draws"].append(res)
     save(doc["name"], doc)
     return doc, res
+
+
+def past_sec(kind, default, per=None):
+    """지난 설계안(plan)·그리기(draw)에 걸린 시간의 평균 — 진행률 게이지 예상 시간. per: 그리기는 화면 수에 비례"""
+    xs = []
+    for f in sorted(os.listdir(DIR) if os.path.isdir(DIR) else [], reverse=True)[:20]:
+        if not f.endswith(".json"):
+            continue
+        try:
+            d = json.load(open(os.path.join(DIR, f), encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if kind == "plan":
+            xs += [v["sec"] for v in d.get("versions", []) if v.get("sec")]
+        else:
+            for x in d.get("draws", []):
+                n = len((next((v for v in d.get("versions", []) if v["v"] == x.get("v")), {}).get("plan") or {}).get("screens", [])) or 1
+                if x.get("sec") and not x.get("error"):
+                    xs.append(x["sec"] / n)
+    if not xs:
+        return default
+    avg = sum(xs[:8]) / len(xs[:8])
+    return avg * per if per else avg
 
 
 def list_plans():

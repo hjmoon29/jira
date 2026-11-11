@@ -323,14 +323,19 @@ def lines(s):
     return [x.strip() for x in (s or "").splitlines() if x.strip()]
 
 
-def collect(q, log=print):
-    """q: name, parent, figma, drive, wiki_extra, children(bool) → (sources, parent page, 이전 사양 정리 페이지)"""
+def collect(q, log=print, prog=None):
+    """q: name, parent, figma, drive, wiki_extra, children(bool) → (sources, parent page, 이전 사양 정리 페이지)
+    prog: (pct, msg) 진행률 보고 함수 — 초안 만들기에서만 넘긴다 (다른 봇이 이 모듈을 라이브러리로 쓸 때는 없음)"""
+    prog = prog or (lambda *a: None)
+    prog(3, "상위 위키 페이지 읽는 중")
     parent = wiki_page(page_id(q.get("parent")))
     title = spec_title(q)
     log(f"상위 페이지: {parent['title']}")
     sources, prev = [wiki_source(parent, "상위 프로젝트 페이지")], None
     if q.get("children", True):
-        for c in wiki_children(parent["id"]):
+        kids = wiki_children(parent["id"])
+        for i, c in enumerate(kids):
+            prog(5 + 20 * i / max(len(kids), 1), f"하위 위키 페이지 읽는 중 ({i + 1}/{len(kids)})")
             if c["title"].strip() == title or c["title"].startswith("[기획 사양 정리]"):
                 prev = c  # 이전에 만든 사양 정리 — 자료가 아니라 '이전 버전'으로 따로 넘긴다
                 continue
@@ -338,10 +343,13 @@ def collect(q, log=print):
         log(f"하위 페이지 {len(sources) - 1}개" + (f" (이전 사양 정리 '{prev['title']}' 별도)" if prev else ""))
     for u in lines(q.get("wiki_extra")):
         sources.append(wiki_source(wiki_page(page_id(u)), "추가 참고"))
-    for u in lines(q.get("figma")):
+    figs, drv = lines(q.get("figma")), lines(q.get("drive"))
+    for i, u in enumerate(figs):
+        prog(25 + 12 * i / max(len(figs), 1), f"Figma 읽는 중 ({i + 1}/{len(figs)})")
         log(f"Figma 읽는 중: {u[:80]}")
         sources.append(figma_source(u))
-    for u in lines(q.get("drive")):
+    for i, u in enumerate(drv):
+        prog(37 + 6 * i / max(len(drv), 1), f"Google Drive 읽는 중 ({i + 1}/{len(drv)})")
         log(f"Google Drive 읽는 중: {u[:80]}")
         sources.append(drive_source(u))
     total = sum(len(s["text"]) for s in sources)
@@ -433,8 +441,11 @@ def draft(q, log=print):
     os.makedirs(RUNS, exist_ok=True)
     if not (q.get("name") or q.get("title") or "").strip():
         raise BotError("제품/프로젝트명을 입력하세요")
+    sys.path.insert(0, os.path.dirname(HERE))  # bots/ (hub_progress)
+    from hub_progress import progress, waiting
+    progress(1, "형식 예시 페이지 읽는 중")
     ref = wiki_page(FORMAT_REFS.get(q.get("format_ref"), next(iter(FORMAT_REFS.values()))))
-    sources, parent, prev = collect(q, log)
+    sources, parent, prev = collect(q, log, progress)
     me = wiki("GET", "/user/current")
     author = re.sub(r"\[.*$", "", me.get("displayName", "")).strip()  # '문효준[IoT기획팀/팀원]' → '문효준'
     prompt = build_prompt(q, sources, parent, prev, ref, author)
@@ -443,7 +454,12 @@ def draft(q, log=print):
     open(base + ".prompt.txt", "w", encoding="utf-8").write(prompt)
     log(f"Claude 작성 중… (자료 {len(sources)}개, {len(prompt):,}자)")
     t0 = time.time()
-    r = run_claude(prompt, (q.get("model") or "").strip() or None, f"IoT업무봇: 기획 사양 정리 초안 ({spec_title(q)})")
+    # 예상 시간: 지난 초안들의 '글자당 걸린 시간' × 이번 자료 글자 수
+    past = [m for m in (json.load(open(os.path.join(RUNS, f), encoding="utf-8")) for f in os.listdir(RUNS) if re.fullmatch(r"spec-\d{8}-\d{6}\.json", f)) if m.get("sec") and m.get("chars")][-5:]
+    est = (sum(m["sec"] for m in past) / sum(m["chars"] for m in past) * len(prompt)) if past else 360
+    r = waiting(45, 97, f"Claude가 초안 작성 중 (자료 {len(sources)}개, {len(prompt):,}자)",
+                lambda: run_claude(prompt, (q.get("model") or "").strip() or None, f"IoT업무봇: 기획 사양 정리 초안 ({spec_title(q)})"), max(60, est))
+    progress(98, "초안 저장 중")
     out = r.get("result") or ""
     open(base + ".raw.txt", "w", encoding="utf-8").write(out)
     m = re.search(r"<<<XML\s*(.*?)\s*XML>>>", out, re.S)

@@ -11,6 +11,8 @@ import base64, datetime, difflib, glob, html, json, os, re, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [os.path.join(HERE, "..", "spec-doc"), os.path.join(HERE, "..", "jira-tasks")]
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # bots/ (hub_progress)
+from hub_progress import progress, stage, waiting  # noqa: E402  화면 진행률 게이지
 import spec_doc as sd  # noqa: E402  위키·Drive 호출, Claude 실행
 import jira_tasks as jt  # noqa: E402  Jira 호출
 
@@ -304,7 +306,9 @@ def src_drive(state, days, me, conf, log):
     keys = [me.get("name"), me.get("name", "")[1:] if len(me.get("name", "")) == 3 else None]
     out, skipped = [], 0
     os.makedirs(CACHE, exist_ok=True)
-    for f in sorted(files, key=lambda f: f["modifiedTime"], reverse=True)[:60]:
+    todo = sorted(files, key=lambda f: f["modifiedTime"], reverse=True)[:60]
+    for i, f in enumerate(todo):
+        progress(23 + 20 * i / max(len(todo), 1), f"Drive 읽는 중 ({i + 1}/{len(todo)})")
         if seen.get(f["id"]) == f["modifiedTime"]:
             continue
         if not readable.search(f["mimeType"]):
@@ -458,15 +462,19 @@ def _run(log, days, mail, doc=True):
     started = datetime.datetime.now()
     me = whoami()
     log(f"사용자: {me.get('name') or '(이름 확인 실패)'}")
+    progress(3, "자료 읽기 시작")
     items, errors, done_src = [], [], []
     steps = [("mail", "메일", lambda: src_mail(state, days, log)),
              ("jira", "Jira", lambda: src_jira(state, days, me, log)),
              ("wiki", "위키", lambda: src_wiki(state, days, me, log)),
              ("drive", "Drive", lambda: src_drive(state, days, me, conf, log)),
              ("memo", "업무메모", lambda: src_memo(state, log))]
+    span = {"mail": (3, 13), "jira": (13, 18), "wiki": (18, 23), "drive": (23, 43), "memo": (43, 45)}
     for key, label, fn in steps:
+        a, b = span[key]
         try:
-            items += fn()
+            with stage(a, b, f"{label} 읽는 중"):
+                items += fn()
             done_src.append(key)
         except Exception as e:
             errors.append(f"{label}: {str(e)[:200]}")
@@ -478,7 +486,10 @@ def _run(log, days, mail, doc=True):
         prompt = build_prompt(me, items, open_tasks, datetime.date.today())
         open(os.path.join(DIR, "last_prompt.txt"), "w", encoding="utf-8").write(prompt)
         log(f"Claude 판단 중… (새 자료 {len(items)}건, {len(prompt):,}자)")
-        r = sd.run_claude(prompt, conf.get("model") or None, "IoT업무봇: 내 할 일 찾기")
+        t_ai = time.time()
+        r = waiting(45, 92, f"Claude가 할 일 판단 중 (새 자료 {len(items)}건)",
+                    lambda: sd.run_claude(prompt, conf.get("model") or None, "IoT업무봇: 내 할 일 찾기"), state.get("claude_sec") or 150)
+        state["claude_sec"] = round(time.time() - t_ai)
         res = parse(r.get("result"))
         stat["cost"] = r.get("total_cost_usd") or 0
         by_id = {t["id"]: t for t in tasks}
@@ -509,6 +520,7 @@ def _run(log, days, mail, doc=True):
                 t.update(status="done", closed=now, closed_by="자동", closed_why=d.get("why", ""), updated=now)
                 stat["done"] += 1
         jsave(TASKS, tasks)
+    progress(93, "결과 정리 중")
     # 성공한 소스만 '마지막으로 읽은 시각'을 옮긴다 (실패한 소스는 다음에 같은 기간을 다시 읽음)
     last = state.setdefault("last", {})
     for k in done_src:
@@ -519,9 +531,11 @@ def _run(log, days, mail, doc=True):
     log(f"새 자료 {stat['items']}건 → 새 할 일 {stat['new']} · 갱신 {stat['updated']} · 자동 완료 {stat['done']}")
     view = board()
     if doc or mail:
+        progress(95, "워드 문서 저장 중")
         view["docx"] = save_docx(view, me.get("name", ""))
         log(f"워드 저장: {view['docx']}")
     if mail:
+        progress(98, "메일 보내는 중")
         view["mailed"] = send_mail(view, view["docx"])
         log(f"메일 발송: {view['mailed']}")
     return view

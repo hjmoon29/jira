@@ -205,7 +205,7 @@ body.navmini .navtoggle svg { transform: rotate(180deg); }
 .app.mini .bot > span:last-child { display: none; }
 .app.mini main { max-width: none; }
 @media (max-width: 760px) { .app.mini { grid-template-columns: minmax(0, 1fr); } .app.mini aside { display: none; } }
-/* 직원 친밀도 */
+/* 직원 커뮤니케이션 */
 .imseg { display: inline-flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
 .imseg .tab { border: 0; border-radius: 0; margin: 0; padding: 6px 14px; font-size: 13px; border-right: 1px solid var(--line); }
 .imseg .tab:last-child { border-right: 0; }
@@ -230,6 +230,24 @@ details.imall .imgrid.sub { margin-top: 8px; grid-template-columns: minmax(0, 1.
 details.imall table { font-size: 12.5px; }
 /* 제품별 진행상황 */
 main:has(.psmx) { max-width: none; }
+#progzone { padding: 14px 18px; }
+#progzone .pz { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
+#progzone .pz + .pz { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line, #d9dee7); }
+#progzone .pz > b { font-size: 14px; min-width: 120px; }
+.prog { flex: 1 1 320px; min-width: 240px; }
+.prog .pbar { height: 12px; border-radius: 6px; background: rgba(127,127,127,.18); overflow: hidden; }
+.prog .pbar i { display: block; height: 100%; background: #1F6FD1; border-radius: 6px; transition: width .6s ease; }
+.prog .pbar.indet i { width: 30% !important; animation: pindet 1.4s ease-in-out infinite; }
+@keyframes pindet { 0% { margin-left: -30%; } 100% { margin-left: 100%; } }
+.prog .pmeta { display: flex; gap: 8px; align-items: baseline; margin-top: 5px; font-size: 13px; }
+.prog .pmeta b { font-size: 15px; color: #1F6FD1; min-width: 44px; }
+.prog .pmeta .pt { margin-left: auto; color: var(--muted); white-space: nowrap; }
+#st .prog { display: inline-block; vertical-align: middle; width: min(520px, 100%); }
+.fresh { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding: 10px 14px; margin: 0 0 12px; border: 1px solid var(--line, #d9dee7); border-radius: 8px; font-size: 14px; }
+.fresh b { font-size: 15px; }
+.fresh .sp { flex: 1; }
+.fresh.stale { border-color: #C2412D; background: rgba(194,65,45,.06); }
+.fresh.stale .ago { color: #C2412D; font-weight: 700; }
 .psbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
 .psbar .sp { flex: 1; }
 .pslegend { display: flex; flex-wrap: wrap; gap: 6px 10px; font-size: 12px; color: var(--muted); margin: 0 0 10px; align-items: center; }
@@ -407,6 +425,7 @@ main { max-width: 1100px; }
     <div class="head"><div class="crumb" id="crumb"></div><h1 id="title">불러오는 중…</h1><p id="desc"></p></div>
     <div class="tabs" id="tabs" role="tablist"></div>
     <section class="card" id="formcard"><form id="form" novalidate></form></section>
+    <section class="card" id="progzone" hidden aria-live="polite"></section>
     <section class="card" id="resultcard" hidden><h2>결과</h2><div id="result"></div></section>
     <dialog class="vals" id="dlg" aria-labelledby="dlgt"></dialog>
     <dialog class="ps" id="psdlg" aria-labelledby="psdlgt"></dialog>
@@ -417,7 +436,19 @@ main { max-width: 1100px; }
 const KEY = "__HUB_KEY__";
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-let bots = [], bot = null, action = null, busy = false;
+let bots = [], bot = null, action = null;
+// 실행 중 상태는 봇별로 관리 — 다른 봇의 기능은 동시에 실행할 수 있고, 같은 봇 안에서만 겹치지 않게 막는다
+// (같은 봇의 기능은 같은 저장 파일을 쓰므로). 'busy' 는 지금 보고 있는 봇이 실행 중인지.
+const busyBots = {};
+function isBusy(id) { return !!busyBots[id === undefined ? (bot && bot.id) : id]; }
+function holdBusy(id) {  // 실행 중 표시를 걸고, 풀어 주는 함수를 돌려준다 (그 사이 다른 봇으로 옮겨도 정확히 그 봇만 풂)
+  id = id || (bot && bot.id);
+  busyBots[id] = (busyBots[id] || 0) + 1;
+  let done = false;
+  return () => { if (done) return; done = true; if (--busyBots[id] <= 0) delete busyBots[id]; };
+}
+Object.defineProperty(window, "busy", { get: () => isBusy() });
+const BUSY_MSG = "이 봇의 다른 기능이 실행 중입니다 — 끝난 뒤 다시 눌러 주세요 (다른 봇은 지금 실행할 수 있습니다)";
 const runs = {};  // 봇·기능별 실행 상태·마지막 결과 — 다른 탭에 갔다 와도 그대로 다시 보여 준다
 const curKey = () => bot && action ? bot.id + "/" + action.id : "";
 const drafts = {};  // 봇·기능별 입력값 유지
@@ -481,10 +512,18 @@ function selectBot(id, actId) {
   $("crumb").innerHTML = `IoT업무봇(Beta) › <b>${esc(bot.group === "system" ? "관리" : bot.group || "기타")}</b>`;
   renderTabs(); renderBots(); renderForm();
   const s = runs[curKey()];
-  if (s && s.res && !action.auto) showResult(s.res, true); else $("resultcard").hidden = true;
-  if (s && s.status) setStatus(...s.status);
+  const holdAuto = action.auto && isBusy(bot.id);  // 같은 봇의 긴 기능이 도는 중: 표는 마지막 결과 + 게이지로
+  if (s && s.res && (!action.auto || holdAuto)) showResult(s.res, true); else $("resultcard").hidden = true;
+  if (holdAuto && !(s && s.res)) {  // 새로 고침 직후 등 저장된 결과가 없으면 표만 조용히 읽어 온다 (실행 중 표시는 건드리지 않음)
+    const k0 = curKey();
+    api("/api/run", { bot: bot.id, action: action.id, params: {} }).then(r => { if (r && r.ok) { (runs[k0] ||= {}).res = r; if (curKey() === k0) showResult(r, true); } }).catch(() => {});
+  }
+  if (s && s.status && !(s.running && s.prog)) setStatus(...s.status);
   if (s && s.running && $("go")) $("go").disabled = true;
-  if (action.auto) submit();
+  if (s && s.running && s.prog) paintProg(curKey());
+  renderProgZone();
+  if (action.auto && !holdAuto) submit();
+  resumeProgress(bot);
   prepare();
 }
 function renderTabs() {  // 실행 중인 기능은 탭에 ⏳ 표시
@@ -552,7 +591,7 @@ function renderForm() {
     if (r && r.ok && el) el.innerHTML = (r.data || []).map(x => `<option value="${esc(x)}">`).join("");
   }));
   $("form").innerHTML = fs.map(field).join("") +
-    `<div class="actions"><button class="btn ${action.confirm ? "danger" : "primary"}" type="submit" id="go">${esc(action.button || "실행")}</button>${(action.extra || []).map((x, i) => `<button class="btn" type="button" data-extra="${i}">${esc(x.button)}</button>`).join("")}<span id="st"></span></div>`;
+    `<div class="actions"><button class="btn ${action.confirm ? "danger" : "primary"}" type="submit" id="go">${esc(action.button || "실행")}</button>${(action.extra || []).map((x, i) => `<button class="btn${x.bypass_busy ? " danger" : ""}" type="button" data-extra="${i}"${x.bypass_busy ? " data-bypass=\"1\"" : ""}>${esc(x.button)}</button>`).join("")}<span id="st"></span></div>`;
   // 입력란 없이 바로 실행되는 기능(설정 등)은 양식 카드를 숨긴다
   $("formcard").hidden = !fs.length && !!action.auto;
 }
@@ -634,7 +673,7 @@ $("form").addEventListener("change", async e => {
 function setStatus(kind, msg) { const s = $("st"); if (s) { s.className = "status " + kind; s.textContent = msg; } }
 async function submit(e) {
   if (e) e.preventDefault();
-  if (busy) { setStatus("bad", "다른 기능이 실행 중입니다 — 끝난 뒤 다시 눌러 주세요"); return; }
+  if (busy && !action.bypass_busy) { setStatus("bad", BUSY_MSG); return; }
   const v = draft();
   const miss = (action.fields || []).filter(f => f.required && visible(f, v) && !String(v[f.name] ?? "").trim());
   if (miss.length) { setStatus("bad", `입력 필요: ${miss.map(f => f.label).join(", ")}`); return; }
@@ -643,12 +682,12 @@ async function submit(e) {
   for (const f of (action.fields || []).filter(f => f.type === "file" && visible(f, v))) {
     const file = fileSel[bot.id + "/" + action.id + "/" + f.name];
     if (!file) { if (f.required) { setStatus("bad", `입력 필요: ${f.label}`); return; } continue; }
-    busy = true; const go = $("go"); if (go) go.disabled = true;
+    const rel = holdBusy(); const go = $("go"); if (go) go.disabled = true;
     try {
       const r = await uploadFile(file, x => setStatus("run", `파일 올리는 중… ${Math.round(x * 100)}%`));
       params[f.name] = r.path; params[f.name + "_name"] = file.name;
-    } catch (err) { busy = false; if (go) go.disabled = false; setStatus("bad", "파일 올리기 실패: " + err.message); return; }
-    busy = false; if (go) go.disabled = false;
+    } catch (err) { rel(); if (go) go.disabled = false; setStatus("bad", "파일 올리기 실패: " + err.message); return; }
+    rel(); if (go) go.disabled = false;
   }
   await runAction(action.id, params);
   if (action.fields && action.fields.some(f => f.type === "file")) {  // 다 올렸으면 파일 칸 비움
@@ -664,7 +703,7 @@ $("form").addEventListener("click", async e => {
   const x = (action.extra || [])[+b.dataset.extra];
   if (!x) return;
   if (x.dialog === "jira_values") { openValues(); return; }
-  if (busy) { setStatus("bad", "다른 기능이 실행 중입니다 — 끝난 뒤 다시 눌러 주세요"); return; }
+  if (busy && !x.bypass_busy) { setStatus("bad", BUSY_MSG); return; }
   const v = draft();
   const miss = x.no_required ? [] : (action.fields || []).filter(f => f.required && visible(f, v) && !String(v[f.name] ?? "").trim());
   if (miss.length) { setStatus("bad", `입력 필요: ${miss.map(f => f.label).join(", ")}`); return; }
@@ -673,12 +712,18 @@ $("form").addEventListener("click", async e => {
 });
 
 async function runAction(actId, params, as) {
-  busy = true;
+  // bypass_busy: '실행 중지'처럼 다른 기능이 도는 중에도 눌러야 하는 기능 — 전역 실행 중 상태를 건드리지 않는다
+  const solo = !!((bot.actions || []).find(a => a.id === actId) || {}).bypass_busy;
+  const rel = solo ? () => {} : holdBusy();
   // 실행 중에 다른 탭·봇으로 옮겨도 결과는 이 기능에 남기고, 이 기능을 보고 있을 때만 화면에 그린다
-  const k = bot.id + "/" + (as || actId), s = runs[k] = { running: true }, mine = () => curKey() === k;
-  const st = (kind, msg) => { s.status = [kind, msg]; if (mine()) setStatus(kind, msg); };
+  const k = bot.id + "/" + (as || actId), mine = () => curKey() === k;
+  const adef = (bot.actions || []).find(a => a.id === actId) || {}, prog = !!adef.progress;
+  // 실행 중에도 이전 결과(표)는 남겨 둔다 — 탭을 옮겼다 돌아오면 그 표 + 진행 게이지를 다시 보여 주기 위해
+  const s = runs[k] = { running: true, res: (runs[k] || {}).res, t0: Date.now(), prog: prog ? { pct: 0, msg: "시작하는 중" } : null, progTab: prog && !as, label: adef.label };
+  const st = (kind, msg) => { s.status = [kind, msg]; if (mine() && !(prog && kind === "run")) setStatus(kind, msg); };
+  if (prog) { watchProgress(k, k.split("/")[0], actId); if (as && mine() && s.res) showResult(s.res, true); setTimeout(() => paintProg(k), 0); }
   const go = $("go"); if (go) go.disabled = true;
-  document.querySelectorAll("[data-extra]").forEach(b => b.disabled = true);
+  document.querySelectorAll("[data-extra]:not([data-bypass])").forEach(b => b.disabled = true);
   renderTabs();
   const t0 = Date.now();
   st("run", "실행 중…");
@@ -688,9 +733,10 @@ async function runAction(actId, params, as) {
   let res;
   try { res = await api("/api/run", { bot: k.split("/")[0], action: actId, params }); }
   catch (err) { res = { ok: false, text: "IoT업무봇 서버에 연결할 수 없습니다. 터미널에서 hub.py 가 실행 중인지 확인하세요." }; }
-  clearInterval(tick); busy = false; s.running = false; s.res = res;
+  clearInterval(tick); s.running = false; s.res = res; s.prog = null; renderProgZone();
+  rel();
   if (mine() && $("go")) $("go").disabled = false;
-  document.querySelectorAll("[data-extra]").forEach(b => b.disabled = false);
+  if (!isBusy(k.split("/")[0])) document.querySelectorAll("[data-extra]").forEach(b => b.disabled = false);
   st(res.ok ? "ok" : "bad", res.ok ? `완료 (${((Date.now() - t0) / 1000).toFixed(1)}초)` : "오류");
   if (mine()) showResult(res);
   if (bot && bot.id === k.split("/")[0]) renderTabs();
@@ -872,7 +918,7 @@ function bindUsage(d) {
   plot.addEventListener("mouseleave", () => { tip.hidden = true; plot.querySelectorAll(".ub.on").forEach(x => x.classList.remove("on")); });
 }
 
-// 직원 친밀도: 기간(일간·주간·월간)·범위(전체/나와의 관계) 선택, 실시간 반영, 최근 30일 누적 막대 + 순위표
+// 직원 커뮤니케이션: 기간(일간·주간·월간)·범위(전체/나와의 관계) 선택, 실시간 반영, 최근 30일 누적 막대 + 순위표
 const IM_SRC = ["mail", "msg", "jira", "wiki", "sheet"];  // 색은 소스 순서대로 고정 (순위와 무관)
 const IM_COLORS = ["var(--s1)", "var(--s2)", "var(--s3)", "var(--s4)", "var(--s5)"];
 let im = null, imOpt = { period: "week" }, imBusy = false;
@@ -940,7 +986,7 @@ function renderIntimacy(d) {
     </div>
     <details class="imall"${open ? " open" : ""}><summary>전체 직원 보기 <span class="muted">· ${esc(P[d.period])} 상호작용 ${num(A.count)} · 직원 쌍 ${num(A.pair_count)}</span></summary>
       <div class="imgrid sub">
-        <section><h3>친밀도 순위 (직원 쌍) <small>나와 관련된 쌍은 강조</small></h3>
+        <section><h3>커뮤니케이션 순위 (직원 쌍) <small>나와 관련된 쌍은 강조</small></h3>
           ${A.pairs.length ? `<div class="tbl"><table><thead><tr><th class="r">순위</th><th>변동</th><th>직원</th><th class="r">횟수</th><th>경로</th></tr></thead><tbody>${pairRows}</tbody></table></div>` : '<p class="empty">없음</p>'}</section>
         <section><h3>활발한 직원 <small>합계 · 연결된 직원 수</small></h3>
           ${A.people.length ? `<div class="tbl"><table><thead><tr><th class="r">#</th><th>직원</th><th class="r">합계</th><th class="r">연결</th></tr></thead><tbody>${pplRows}</tbody></table></div>` : '<p class="empty">없음</p>'}</section>
@@ -974,12 +1020,14 @@ function bindIntimacy() {
 async function imCall(act, extra) {
   if (busy || imBusy) return;
   const m = $("immsg"), t0 = Date.now();
-  imBusy = busy = act === "refresh";
+  imBusy = act === "refresh";
+  const rel = imBusy ? holdBusy("intimacy") : () => {};
   let tick;
-  if (act === "refresh" && m) { m.hidden = false; tick = setInterval(() => m.textContent = `반영 중… ${Math.round((Date.now() - t0) / 1000)}초 (메일·메신저가 많으면 몇 분 걸립니다)`, 1000); }
+  const endProg = act === "refresh" ? startProg("intimacy", "refresh", "실시간 반영") : () => {};
+  if (act === "refresh" && m) m.hidden = true;  // 진행은 위 게이지로
   const srcs = ["메일", "Jira", "위키", "구글시트", ...(im && im.has_msg_login ? ["메신저"] : [])];
   const r = await api("/api/run", { bot: "intimacy", action: act, params: { ...imOpt, ...(act === "refresh" ? { sources: srcs } : {}), ...(extra || {}) } }).catch(() => ({ ok: false, text: "서버 연결 실패" }));
-  clearInterval(tick); imBusy = false; if (act === "refresh") busy = false;
+  clearInterval(tick); imBusy = false; rel(); endProg();
   if (r.ok && r.view === "intimacy") { showResult(r); if (act === "refresh") { loadHistory(); const m2 = $("immsg"); if (m2) { m2.hidden = false; m2.className = "status ok"; m2.textContent = r.summary || "반영 완료"; } } }
   else if (m) { m.hidden = false; m.className = "status bad"; m.textContent = r.text || "오류"; }
 }
@@ -1036,11 +1084,11 @@ async function applyPlan() {
   if (plan.plan.kind === "epic") { if (!confirm(`프로젝트 문서(에픽)를 만듭니다.\n\n · ${todo[0].summary}`)) return; }
   else if (!confirm(`${ep.key} 에 하위 문서 ${todo.length}개를 만듭니다.\n\n${list}\n\n체크를 해제할 문서가 있으면 [취소]를 누르고 표에서 고른 뒤 생성 버튼을 누르세요.`)) return;
   const b = $("apply"); if (b) { b.disabled = true; b.textContent = "생성 중…"; }
-  busy = true;
+  const rel = holdBusy();
   let res;
   try { res = await api("/api/run", { bot: bot.id, action: "apply", params: { plan_file: plan.plan_file, plan: plan.plan } }); }
   catch (err) { res = { ok: false, text: "서버 연결 실패" }; }
-  busy = false;
+  rel();
   showResult(res);
   loadHistory();
 }
@@ -1130,14 +1178,94 @@ $("result").addEventListener("click", async e => {
   if (!o && !pb) return;
   if (busy) return;
   if (pb && !confirm(`'${spec.meta.title}' 을(를) 위키 '${spec.meta.parent.title}' 의 하위 문서로 게시합니다.\n같은 제목 페이지가 이미 있으면 그 페이지를 새 버전으로 갱신합니다.\n\n계속할까요?`)) return;
-  busy = true; (o || pb).disabled = true;
+  const rel = holdBusy(); (o || pb).disabled = true;
   const res = await api("/api/run", { bot: bot.id, action: o ? "open" : "publish", params: { name: o ? o.dataset.specOpen : spec.name } })
     .catch(() => ({ ok: false, text: "서버 연결 실패" }));
-  busy = false;
+  rel();
   showResult(res); loadHistory();
 });
 
 // 내 할 일: 기한 지남(별도 강조) → 기한 묶음 표(중요도 열) → 보류(기한 정해 되돌리기·삭제) → 완료(날짜별) → 내 일 아님
+// 진행률 게이지: 봇이 보고하는 % + 지금 하는 일 + 경과 시간. runs[k].prog 에 저장해 두므로 탭을 옮겼다 돌아와도 이어서 보인다
+function progHTML(s) {
+  const p = (s && s.prog) || {}, pct = typeof p.pct === "number" ? p.pct : null;
+  const sec = s && s.t0 ? Math.max(0, Math.round((Date.now() - s.t0) / 1000)) : null;
+  const el = sec === null ? "" : `경과 ${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
+  return `<div class="prog" role="progressbar" aria-valuemin="0" aria-valuemax="100"${pct === null ? "" : ` aria-valuenow="${Math.round(pct)}"`}>
+    <div class="pbar${pct === null ? " indet" : ""}"><i style="width:${pct || 0}%"></i></div>
+    <div class="pmeta"><b>${pct === null ? "…" : Math.floor(pct) + "%"}</b><span>${esc(p.msg || "시작하는 중")}</span><span class="pt">${el}</span></div></div>`;
+}
+// 지금 보고 있는 봇에서 실행 중인 진행률 기능 중, 화면 다른 곳(맨 위 막대·실행 버튼 옆)에 게이지가 없는 것을 결과 카드 위에 모아 보여 준다
+function renderProgZone() {
+  const z = $("progzone");
+  if (!z) return;
+  const items = bot ? Object.entries(runs).filter(([k, r]) => r.running && r.prog && k.startsWith(bot.id + "/")
+    && !document.querySelector(`#result [data-prog="${CSS.escape(k)}"], #st [data-prog="${CSS.escape(k)}"]`)) : [];
+  z.hidden = !items.length;
+  z.innerHTML = items.map(([k, r]) => `<div class="pz"><b>${esc(r.label || "실행 중")}</b><div data-progz="${esc(k)}" style="flex:1 1 320px;min-width:240px">${progHTML(r)}</div></div>`).join("");
+}
+// 별도 버튼으로 실행하는 기능용: 진행률 추적 시작 → 끝낼 때 부르는 함수를 돌려준다
+function startProg(botId, actId, label) {
+  const k = botId + "/" + actId;
+  const s = runs[k] = { ...(runs[k] || {}), running: true, t0: Date.now(), prog: { pct: 0, msg: "시작하는 중" }, label, watch: null };
+  watchProgress(k, botId, actId);
+  renderProgZone();
+  if (bot && bot.id === botId) renderTabs();
+  return () => { s.running = false; s.prog = null; renderProgZone(); if (bot && bot.id === botId) renderTabs(); };
+}
+function paintProg(k) {
+  const s = runs[k];
+  renderProgZone();
+  document.querySelectorAll(`[data-prog="${CSS.escape(k)}"]`).forEach(el => el.innerHTML = progHTML(s));
+  if (s && s.running && s.progTab && curKey() === k) { const st = $("st"); if (st && !st.querySelector(".prog")) { st.className = "status"; st.innerHTML = `<span data-prog="${esc(k)}">${progHTML(s)}</span>`; } }
+}
+// 실행 중인 기능의 진행률을 1초마다 읽는다. restored: 화면을 새로 고치기 전에 시작된 실행을 다시 붙잡은 경우(끝나면 표를 새로 읽음)
+function watchProgress(k, botId, actId, restored) {
+  const s = runs[k];
+  if (!s || s.watch) return;
+  s.watch = setInterval(async () => {
+    if (!s.running) { clearInterval(s.watch); s.watch = null; return; }
+    const r = await fetch("/api/progress?bot=" + encodeURIComponent(botId), { headers: { "X-Hub-Key": KEY } }).then(x => x.json()).catch(() => null);
+    if (!r) return;
+    const cur = r[actId];
+    if (cur) { s.prog = { pct: cur.pct, msg: cur.msg }; if (!s.t0 && cur.t0) s.t0 = cur.t0 * 1000; paintProg(k); }
+    else if (!restored) renderProgZone();
+    else {  // 끝남 — 붙잡아 둔 실행 중 표시를 풀고 결과 표를 다시 읽는다
+      clearInterval(s.watch); s.watch = null; s.running = false; s.prog = null;
+      if (s.release) s.release();
+      if (bot && bot.id === botId) selectBot(botId, action.id);
+      loadHistory();
+    }
+  }, 1000);
+}
+// 화면을 새로 고친 뒤에도 서버에서 아직 돌고 있는 진행률 기능이 있으면 다시 게이지로 붙잡는다
+async function resumeProgress(b) {
+  if (!b || !(b.actions || []).some(a => a.progress)) return;
+  const r = await fetch("/api/progress?bot=" + encodeURIComponent(b.id), { headers: { "X-Hub-Key": KEY } }).then(x => x.json()).catch(() => null);
+  for (const [actId, cur] of Object.entries(r || {})) {
+    const a = b.actions.find(x => x.id === actId);
+    if (!a || !a.progress) continue;
+    const k = b.id + "/" + (a.progress_tab || actId);
+    if (runs[k] && runs[k].running && runs[k].prog) continue;  // 이미 게이지로 따라가는 중 (표 불러오기만 도는 중이면 덮어씀)
+    const prev = runs[k] || {};
+    runs[k] = { running: true, res: prev.res, t0: cur.t0 * 1000, prog: { pct: cur.pct, msg: cur.msg }, progTab: !a.progress_tab, release: holdBusy(b.id), label: a.label };
+    watchProgress(k, b.id, actId, true);
+    if (bot && bot.id === b.id) selectBot(b.id, action.id);
+  }
+}
+// 마지막 갱신 막대: 시각(크게) + 얼마나 지났는지, 하루 넘으면 빨갛게 + 바로 새로 가져오는 버튼
+function agoText(at) {
+  if (!at) return { txt: "", stale: true };
+  const t = new Date(at.replace(" ", "T")), m = Math.round((Date.now() - t) / 60000);
+  if (isNaN(m)) return { txt: "", stale: false };
+  const txt = m < 1 ? "방금" : m < 60 ? `${m}분 전` : m < 1440 ? `${Math.floor(m / 60)}시간 전` : `${Math.floor(m / 1440)}일 전`;
+  return { txt, stale: m >= 1440 };
+}
+function freshBar(label, at, btn, sub) {
+  const a = agoText(at);
+  return `<div class="fresh${a.stale ? " stale" : ""}">${esc(label)} <b>${at ? esc(at) : "없음"}</b>${a.txt ? ` <span class="ago">(${a.txt}${a.stale ? " — 하루 넘게 지났습니다" : ""})</span>` : at ? "" : ` <span class="ago">— 아직 가져온 적이 없습니다</span>`}
+    ${sub ? `<span class="muted" style="font-size:12px">${sub}</span>` : ""}<span class="sp"></span>${btn}</div>`;
+}
 function renderMyTasks(d) {
   const lr = d.last_run, wd = "일월화수목금토";
   const dd = s => s ? `${s.slice(5, 10).replace("-", "/")}(${wd[new Date(s.slice(0, 10) + "T00:00").getDay()]})` : "-";
@@ -1171,7 +1299,10 @@ function renderMyTasks(d) {
   const groups = d.groups.map(g => [g, d.open.filter(t => t.group === g)]).filter(([, l]) => l.length);
   const over = groups.find(([g]) => g === "지난 기한"), rest = groups.filter(([g]) => g !== "지난 기한");
   const hold = d.hold || [], days = d.done_days || [], notmine = d.notmine || [];
-  return `<div class="planmeta">${info.map(x => `<span>${x}</span>`).join("")}</div>
+  const mt = runs["my-tasks/board"] || {}, mtRun = mt.running && mt.prog;
+  return freshBar("마지막 갱신", lr && lr.at, mtRun ? `<div data-prog="my-tasks/board" style="flex:1 1 320px;min-width:240px">${progHTML(mt)}</div>`
+      : `<button class="btn primary" type="button" data-mtfind="1">↻ 지금 새로 찾기</button>`, mtRun ? "" : "메일·Jira·위키·Drive에서 새 할 일을 찾습니다 (보통 3~10분)")
+    + `<div class="planmeta">${info.map(x => `<span>${x}</span>`).join("")}</div>
     ${lr && lr.errors && lr.errors.length ? `<p class="status bad">읽지 못한 자료: ${lr.errors.map(esc).join(" / ")}</p>` : ""}
     ${over ? `<div style="border:2px solid #C2412D;border-radius:8px;padding:8px 12px;margin:14px 0;background:rgba(194,65,45,.05)">
       <h4 style="margin:4px 0 6px;color:#C2412D">⚠ ${esc(label["지난 기한"] || "기한 지남")} ${over[1].length}건</h4>${tbl(head, over[1].map(openRow).join(""))}</div>` : ""}
@@ -1186,11 +1317,18 @@ function renderMyTasks(d) {
       ${tbl('<thead><tr><th>중요도</th><th>할 일</th><th>표시</th><th></th></tr></thead>', notmine.map(closedRow).join(""))}</details>` : ""}`;
 }
 $("result").addEventListener("click", async e => {
+  if (!e.target.closest("[data-mtfind]") || !bot || bot.id !== "my-tasks") return;
+  if (busy) { setStatus("bad", BUSY_MSG); return; }
+  const f = ((bot.actions.find(a => a.id === "find") || {}).fields || []);
+  const params = Object.fromEntries(f.map(x => [x.name, x.default ?? ""]));
+  await runAction("find", params, "board");
+});
+$("result").addEventListener("click", async e => {
   const doc = e.target.closest("[data-mtdoc]");
   if (doc && !busy) {
-    busy = true; doc.disabled = true;
+    const rel = holdBusy(); doc.disabled = true;
     const r = await api("/api/run", { bot: bot.id, action: "save_now", params: {} }).catch(() => ({ ok: false, text: "서버 연결 실패" }));
-    busy = false; doc.disabled = false;
+    rel(); doc.disabled = false;
     doc.textContent = r.ok ? "저장·열기 완료" : "저장 실패";
     return;
   }
@@ -1205,15 +1343,15 @@ $("result").addEventListener("click", async e => {
     if (sel) params.priority = sel.value;
   }
   if (params.status === "deleted" && !confirm("이 보류 항목을 삭제할까요? (목록에서 완전히 빠집니다)")) return;
-  busy = true; b.disabled = true;
+  const rel = holdBusy(); b.disabled = true;
   const res = await api("/api/run", { bot: bot.id, action: "mark", params }).catch(() => ({ ok: false, text: "서버 연결 실패" }));
-  busy = false; showResult(res);
+  rel(); showResult(res);
 });
 
 // 제품별 진행상황: 제품(행) × 단계(열) 표. 칸·제품을 눌러 직접 입력, Jira 불러오기/채우기
 let ps = null, psHideDone = false;
 try { psHideDone = localStorage.getItem("hub.ps.hideDone") === "1"; } catch (e) {}
-const psMD = s => s ? s.slice(5, 10).replace("-", "/") : "";
+const psMD = s => s ? s.slice(2, 10).replace(/-/g, "/") : "";  // yy/MM/dd — 연도까지 표시
 function psProgress(p) {
   const st = ps.stages.filter(s => ((p.cells || {})[s.id] || {}).status !== "해당없음");
   const done = st.filter(s => ((p.cells || {})[s.id] || {}).status === "완료").length;
@@ -1246,10 +1384,13 @@ function renderPs(d) {
       <td style="min-width:160px;max-width:240px;font-size:12px;white-space:pre-line">${esc(p.note || "")}</td></tr>`;
   };
   const legend = d.statuses.map(s => `<span class="pill st-${esc(s)}">${esc(s === "미착수" ? "– 미착수" : s)}</span>`).join("");
-  return `<div class="psbar">
-      <button class="btn primary" type="button" data-psnew="1">+ 제품 추가</button>
+  const pr = runs["product-status/board"] || {}, prRun = pr.running && pr.prog;
+  return freshBar("마지막 Jira 반영", d.jira_at, prRun ? `<div data-prog="product-status/board" style="flex:1 1 320px;min-width:240px">${progHTML(pr)}</div>`
+      : `<button class="btn primary" type="button" data-psjira="jira_fill" title="에픽 하위 문서 제목·상태로 빈칸만 채웁니다. 직접 입력한 칸은 그대로 둡니다">↻ 지금 새로 가져오기</button>`,
+      prRun ? "" : (d.updated ? `마지막 수정 ${esc(d.updated)} · ` : "") + "Jira 하위 문서로 빈칸만 채웁니다 (직접 입력한 칸은 그대로)")
+    + `<div class="psbar">
+      <button class="btn" type="button" data-psnew="1">+ 제품 추가</button>
       <button class="btn" type="button" data-psjira="import_jira" title="Jira에서 내가 담당인 진행 중 프로젝트(큰틀) 에픽을 제품으로 추가합니다">Jira에서 내 제품 불러오기</button>
-      <button class="btn" type="button" data-psjira="jira_fill" title="에픽 하위 문서 제목·상태로 빈칸만 채웁니다. 직접 입력한 칸은 그대로 둡니다">Jira 하위 문서로 빈칸 채우기</button>
       <span class="sp"></span>
       <label class="check" style="font-size:13px"><input type="checkbox" data-pshide="1"${psHideDone ? " checked" : ""}>종료된 제품 숨기기</label>
       <span id="psmsg" class="status" hidden></span></div>
@@ -1259,15 +1400,27 @@ function renderPs(d) {
       <tr>${d.stages.map(s => { const m = s.label.match(/^사양 전달 · (.+)$/); return `<th title="${esc(s.help || s.label)}">${m ? `<small>사양 전달</small>${esc(m[1])}` : esc(s.label)}</th>`; }).join("")}</tr></thead>
       <tbody>${list.map(row).join("")}</tbody></table></div>`
       : `<p class="empty">${d.products.length ? "표시할 제품이 없습니다 (종료된 제품 숨김)." : "아직 등록한 제품이 없습니다. [+ 제품 추가] 또는 [Jira에서 내 제품 불러오기]로 시작하세요."}</p>`}
-    <p class="note">${d.updated ? `마지막 수정 ${esc(d.updated)}` : ""}${d.jira_at ? ` · Jira 채우기 ${esc(d.jira_at)}` : ""}${d.store ? `<br>저장 위치: ${esc(d.store)}` : ""}</p>`;
+    <p class="note">${d.store ? `저장 위치: ${esc(d.store)}` : ""}</p>`;
 }
 function psMsg(kind, text) { const m = $("psmsg"); if (m) { m.hidden = !text; m.className = "status " + kind; m.textContent = text; } }
 async function psCall(act, params) {
-  if (busy) { psMsg("bad", "다른 기능이 실행 중입니다"); return null; }
-  busy = true; psMsg("run", act.startsWith("jira") || act === "import_jira" ? "Jira 확인 중…" : "저장 중…");
+  if (isBusy("product-status")) { psMsg("bad", "이 봇의 다른 기능이 실행 중입니다"); return null; }
+  const rel = holdBusy("product-status"), K = "product-status/board";
+  const def = ((bots.find(b => b.id === "product-status") || {}).actions || []).find(a => a.id === act) || {};
+  let s = null;
+  if (def.progress) {  // 오래 걸리는 기능: 게이지로 (탭을 옮겼다 와도 runs 에 남아 있음)
+    s = runs[K] = { ...(runs[K] || {}), running: true, t0: Date.now(), prog: { pct: 0, msg: "시작하는 중" } };
+    watchProgress(K, "product-status", act);
+    if (ps && bot && bot.id === "product-status") showResult({ ok: true, view: "product_status", data: ps, quiet: true }, true);
+    renderTabs();
+  } else psMsg("run", act.startsWith("jira") || act === "import_jira" ? "Jira 확인 중…" : "저장 중…");
   const r = await api("/api/run", { bot: "product-status", action: act, params }).catch(() => ({ ok: false, text: "서버 연결 실패" }));
-  busy = false;
-  if (r.ok && r.view === "product_status") { showResult(r); if (!r.quiet) loadHistory(); }
+  rel();
+  if (s) { s.running = false; s.prog = null; if (r.ok && r.view === "product_status") s.res = r; if (bot && bot.id === "product-status") renderTabs(); }
+  if (r.ok && r.view === "product_status") {
+    if (bot && bot.id === "product-status") { showResult(r); if (s && r.summary) psMsg("ok", r.summary); }
+    if (!r.quiet) loadHistory();
+  }
   else psMsg("bad", r.text || "오류");
   return r;
 }
@@ -1309,7 +1462,7 @@ $("result").addEventListener("click", async e => {
   if (t.dataset.psedit) return psEditProduct(ps.products.find(p => p.id === t.dataset.psedit));
   if (t.dataset.psc) return psEditCell(ps.products.find(p => p.id === t.dataset.psc), ps.stages.find(s => s.id === t.dataset.stage));
   if (t.dataset.psmove) return psCall("move_product", { id: t.dataset.psmove, step: +t.dataset.step });
-  if (t.dataset.psjira) { t.disabled = true; await psCall(t.dataset.psjira, {}); t.disabled = false; }
+  if (t.dataset.psjira) { t.disabled = true; await psCall(t.dataset.psjira, {}); if (t.isConnected) t.disabled = false; }
 });
 $("result").addEventListener("change", e => {
   if (!e.target.dataset.pshide) return;
@@ -1355,8 +1508,8 @@ function renderMinList(d) {
     <td class="nowrap">${esc(j.created)}</td>
     <td><b>${esc(j.page_title || j.title || j.file)}</b><div class="note" style="margin:0">${esc(j.file)} · ${esc(j.date)}${j.duration ? " · 음성 " + minDur(j.duration) : ""}</div></td>
     <td style="min-width:220px"><span class="pill ${MIN_ST[j.status] || "have"}">${esc(j.status_label)}</span>
-      ${run(j) ? `<div style="background:var(--line);border-radius:4px;height:6px;margin:6px 0 2px"><div style="background:var(--accent);height:6px;border-radius:4px;width:${j.status === "drafting" ? 100 : j.progress || 0}%"></div></div>` : ""}
-      ${j.message ? `<div class="note" style="margin:0">${esc(j.message)}</div>` : ""}
+      ${run(j) ? `<div style="margin-top:6px">${progHTML({ prog: { pct: typeof j.pct === "number" ? j.pct : (j.status === "drafting" ? 80 : j.status === "queued" ? 0 : (j.progress || 0) * 0.78), msg: j.message || j.status_label } })}</div>`
+        : j.message ? `<div class="note" style="margin:0">${esc(j.message)}</div>` : ""}
       ${j.stale ? '<div class="note" style="margin:0;color:#C2412D">한동안 진행이 없습니다 (PC가 꺼졌거나 중단됨) — [다시 시작]을 눌러 주세요</div>' : ""}
       ${j.published ? `<div><a href="${esc(j.published.url)}" target="_blank" rel="noopener">위키에서 보기</a></div>` : ""}</td>
     <td class="nowrap">${j.versions && j.versions.length ? `<button class="btn" type="button" data-min-open="${esc(j.id)}">열기</button> ` : ""}
@@ -1420,9 +1573,10 @@ $("result").addEventListener("click", async e => {
     act = "revise"; params = { id: mdoc.job.id, feedback: fb };
     const st = $("minst"); if (st) { st.className = "status run"; st.textContent = "수정하는 중… (1~5분)"; }
   }
-  busy = true; t.disabled = true;
+  const rel = holdBusy(); t.disabled = true;
+  const endProg = act === "revise" ? startProg(bot.id, "revise", "회의록 수정") : () => {};
   const res = await api("/api/run", { bot: bot.id, action: act, params }).catch(() => ({ ok: false, text: "서버 연결 실패" }));
-  busy = false;
+  rel(); endProg();
   if (!res.ok && (act === "revise" || act === "publish")) { t.disabled = false; alertMin(res.text, act); return; }
   showResult(res); loadHistory();
 });
@@ -1474,9 +1628,9 @@ $("result").addEventListener("click", async e => {
   if (!o && !rv && !dr) return;
   if (busy) return;
   if (o) {
-    busy = true;
+    const rel = holdBusy();
     const res = await api("/api/run", { bot: bot.id, action: "open", params: { name: o.dataset.uxOpen } }).catch(() => ({ ok: false, text: "서버 연결 실패" }));
-    busy = false; showResult(res); return;
+    rel(); showResult(res); return;
   }
   if (rv) {
     const fb = $("uxfb").value.trim();
@@ -1556,10 +1710,11 @@ $("result").addEventListener("click", async e => {
     if (!confirm("이 예약을 삭제할까요?")) return;
     act = "unschedule"; params = { id: del.dataset.qaDel };
   }
-  const b = run || sch || now || del; b.disabled = true; busy = true;
-  const t0 = Date.now(), lbl = b.textContent, tick = setInterval(() => b.textContent = `실행 중… ${Math.round((Date.now() - t0) / 1000)}초`, 1000);
+  const b = run || sch || now || del; b.disabled = true; const rel = holdBusy();
+  const t0 = Date.now(), lbl = b.textContent, tick = setInterval(() => { if (b.isConnected) b.textContent = `실행 중… ${Math.round((Date.now() - t0) / 1000)}초`; }, 1000);
+  const endProg = run || now ? startProg(bot.id, act, run ? "답변 만들기" : "예약 지금 실행") : () => {};
   const res = await api("/api/run", { bot: bot.id, action: act, params }).catch(() => ({ ok: false, text: "서버 연결 실패" }));
-  clearInterval(tick); busy = false; b.textContent = lbl; b.disabled = false;
+  clearInterval(tick); rel(); endProg(); b.textContent = lbl; b.disabled = false;
   if (res.view) showResult(res);
   else if (run || sch) { const box = $("result").querySelector(".qabox"); box.insertAdjacentHTML("beforeend", `<p class="status ${res.ok ? "ok" : "bad"}" style="white-space:pre-wrap">${esc(res.text || "")}</p>`); }
   else showResult(res);

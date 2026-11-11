@@ -14,6 +14,24 @@ RUNS = os.path.join(HERE, "runs")
 HISTORY = os.path.join(RUNS, "history.jsonl")
 PORT = int(os.environ.get("BOT_HUB_PORT", "8765"))
 KEY = secrets.token_urlsafe(24)
+PROGRESS = os.path.join(RUNS, "progress")
+ACTIVE = {}  # (봇, 기능) → 시작 시각 — 화면을 새로 고쳐도 실행 중인 기능의 진행률을 다시 찾을 수 있게
+ACTIVE_LOCK = threading.Lock()
+
+
+def progress_of(bot_id):
+    """그 봇에서 지금 실행 중인 기능들의 진행 상태 {기능: {running, pct, msg, t0}}"""
+    out = {}
+    with ACTIVE_LOCK:
+        items = [(a, t0) for (b, a), t0 in ACTIVE.items() if b == bot_id]
+    for a, t0 in items:
+        r = {"running": True, "t0": t0, "pct": None, "msg": ""}
+        try:
+            r.update(json.load(open(os.path.join(PROGRESS, f"{bot_id}__{a}.json"), encoding="utf-8")))
+        except (OSError, ValueError):
+            pass
+        out[a] = r
+    return out
 HOSTS = {f"127.0.0.1:{PORT}", f"localhost:{PORT}"}
 
 
@@ -54,8 +72,17 @@ def run(bot_id, action_id, params, log=True):
         return {"ok": False, "text": f"알 수 없는 봇/기능: {bot_id}/{action_id}"}
     adapter = os.path.join(BOTS, bot_id, "adapter.py")
     # Windows 기본 인코딩(cp949)에서도 한글이 깨지지 않게 봇은 항상 UTF-8로 주고받는다 (-I 는 PYTHONUTF8 등 환경변수를 무시하므로 -X utf8 로 지정)
-    env = dict(os.environ, BOT_HUB_RUNS=RUNS, PYTHONUTF8="1", PYTHONIOENCODING="utf-8")
+    os.makedirs(PROGRESS, exist_ok=True)
+    pfile = os.path.join(PROGRESS, f"{bot_id}__{action_id}.json")
+    try:
+        os.remove(pfile)
+    except OSError:
+        pass
+    env = dict(os.environ, BOT_HUB_RUNS=RUNS, PYTHONUTF8="1", PYTHONIOENCODING="utf-8", BOT_HUB_PROGRESS=pfile)
     t0 = time.time()
+    if action.get("progress"):
+        with ACTIVE_LOCK:
+            ACTIVE[(bot_id, action_id)] = t0
     try:
         p = subprocess.run([sys.executable, "-I", "-X", "utf8", adapter, action_id], input=json.dumps(params, ensure_ascii=False),
                            capture_output=True, text=True, encoding="utf-8", cwd=os.path.dirname(adapter), env=env,
@@ -66,8 +93,17 @@ def run(bot_id, action_id, params, log=True):
             res = {"ok": p.returncode == 0, "text": (p.stdout + p.stderr).strip()}
         if p.returncode != 0 and p.stderr.strip() and not res.get("text"):
             res["text"] = p.stderr.strip()
+        if p.returncode != 0 and not p.stdout.strip() and not p.stderr.strip():  # '실행 중지' 등으로 강제 종료된 경우
+            res = {"ok": False, "headline": "⏹ 실행이 중지되었습니다", "text": "실행 도중 중지되었습니다.", "summary": "중지됨"}
     except subprocess.TimeoutExpired:
         res = {"ok": False, "text": f"시간 초과 ({action.get('timeout', 300)}초)"}
+    finally:
+        with ACTIVE_LOCK:
+            ACTIVE.pop((bot_id, action_id), None)
+        try:
+            os.remove(pfile)
+        except OSError:
+            pass
     res.setdefault("ok", True)
     if res.get("quiet") or not log:  # 화면 내부용 호출(자동완성 목록 등)은 실행 기록에 남기지 않음
         return res
@@ -111,6 +147,10 @@ class Handler(BaseHTTPRequestHandler):
             return
         if self.path == "/api/bots":
             return self.send(200, load_bots())
+        if self.path.startswith("/api/progress?"):
+            import urllib.parse
+            q = urllib.parse.parse_qs(self.path.split("?", 1)[1])
+            return self.send(200, progress_of((q.get("bot") or [""])[0]))
         if self.path == "/api/history":
             return self.send(200, history())
         if self.path == "/api/limits":  # 상단 바의 한도 표시 — 실행 기록에 남기지 않음
