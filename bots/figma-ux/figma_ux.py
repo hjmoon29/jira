@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Figma UX 기획봇: 요청사항과 참고 IoCare+ 화면을 받아 UX 설계안을 만들고, 확인 후 Figma에 화면을 그린다.
+"""Figma UX 기획: 요청사항과 참고 IoCare+ 화면을 받아 UX 설계안을 만들고, 확인 후 Figma에 화면을 그린다.
 
   plan     참고 화면(Figma REST 글자) 수집 → Claude(도구 없음)가 설계안(JSON: 화면 목록·구성·정책) 작성 → runs/figma-ux/ 저장
   revise   설계안 + 수정 요청 → 새 버전

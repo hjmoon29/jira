@@ -8,7 +8,7 @@ description: 사내 Jira(jira.coway.com) 제품 프로젝트 문서(에픽)에 �
 - 하위 문서 제목 = `<머리말> <제품명> <문서 제목>` (예: `[기획] 대만향 아이콘3 알림 정의`), 에픽에 Epic Link로 연결.
 - 코드·설정은 IoT업무봇 저장소 `~/Downloads/bot-hub/bots/jira-tasks/` (Windows: `%USERPROFILE%\Downloads\bot-hub\bots\jira-tasks\`). Mac·Windows가 Git으로 같이 씀.
 - 설정 `config.json`: `default_docs`(기본 하위 문서 목록·설명 양식, `{제품}` 치환, `regions`=국내향·해외향), `reference_epic`(값 설정 기준 에픽, 대만향 IOCARERENEW2023-2597), `custom_prefix`(별도 문서 머리말),
-  `products`(제품명 → 에픽 키·기본 담당자). 화면에서는 IoT업무봇 > JIRA 자동 생성기 > 설정.
+  `products`(제품명 → 에픽 키·기본 담당자). 화면에서는 IoT업무봇 > Jira 자동 생성 > 설정.
 - 스크립트: `python3 -I ~/Downloads/bot-hub/bots/jira-tasks/jira_tasks.py` (Windows는 `py -3 -I %USERPROFILE%\Downloads\bot-hub\bots\jira-tasks\jira_tasks.py`)
 - 토큰: PC마다 `~/.config/jira-bot/token` (저장소에 넣지 않음)
 - 설정을 바꿨으면 IoT업무봇의 '동기화' 봇이나 git으로 커밋·푸시해서 다른 PC와 공유한다.

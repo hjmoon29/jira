@@ -17,6 +17,44 @@ KEY = secrets.token_urlsafe(24)
 PROGRESS = os.path.join(RUNS, "progress")
 ACTIVE = {}  # (봇, 기능) → 시작 시각 — 화면을 새로 고쳐도 실행 중인 기능의 진행률을 다시 찾을 수 있게
 ACTIVE_LOCK = threading.Lock()
+RUNNING = {}   # (봇, 기능) → 실행 중인 프로세스 — '중지' 버튼으로 끌 수 있게
+STOPPED = set()  # 사용자가 중지한 (봇, 기능)
+
+
+def kill_tree(proc):
+    """봇 프로세스와 그 아래에서 띄운 것(Edge 창·Claude 등)까지 함께 끈다."""
+    try:
+        if os.name == "nt":
+            subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"], capture_output=True)
+        else:
+            import signal
+            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+    except Exception:  # noqa: BLE001
+        try:
+            proc.kill()
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def stop(bot_id, action_id=""):
+    """실행 중인 기능을 중지. action_id 가 비면 그 봇에서 도는 기능 전부. 남은 잠금 파일도 지운다."""
+    with ACTIVE_LOCK:
+        keys = [k for k in RUNNING if k[0] == bot_id and (not action_id or k[1] == action_id)]
+        procs = [(k, RUNNING[k]) for k in keys]
+        STOPPED.update(keys)
+    for _, p in procs:
+        kill_tree(p)
+    # 봇이 '실행 중' 표시로 남겨 둔 잠금 파일(run.lock 등) 정리 — 다음 실행이 '이미 실행 중'으로 막히지 않게
+    d = os.path.join(RUNS, bot_id)
+    if procs and os.path.isdir(d):
+        for f in os.listdir(d):
+            if f.endswith(".lock"):
+                try:
+                    os.remove(os.path.join(d, f))
+                except OSError:
+                    pass
+    return {"ok": True, "stopped": [k[1] for k, _ in procs],
+            "text": f"{len(procs)}개 기능을 중지했습니다." if procs else "실행 중인 기능이 없습니다."}
 
 
 def progress_of(bot_id):
@@ -51,6 +89,31 @@ def load_bots():
     return sorted(bots, key=lambda b: (b.get("order", 100), b["name"]))
 
 
+def badges():
+    """왼쪽 메뉴 배지: 내 할 일의 오늘·지난 기한 건수, 동기화(올릴 변경 있음) 여부. 실패하면 조용히 빈 값."""
+    out = {}
+    try:
+        import datetime
+        tasks = json.load(open(os.path.join(RUNS, "my-tasks", "tasks.json"), encoding="utf-8"))
+        tasks = tasks if isinstance(tasks, list) else tasks.get("tasks", [])
+        today = datetime.date.today().isoformat()
+        n = sum(1 for t in tasks if t.get("status") == "open" and t.get("due") and t["due"] <= today)
+        if n:
+            out["my-tasks"] = {"n": n, "title": f"오늘·지난 기한 {n}건"}
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        g = lambda *a: subprocess.run(["git", *a], cwd=HERE, capture_output=True, text=True, encoding="utf-8", timeout=8)
+        dirty = [l for l in g("status", "--porcelain").stdout.splitlines() if l.strip()]
+        ahead = g("rev-list", "--count", "@{u}..HEAD").stdout.strip()
+        ahead = int(ahead) if ahead.isdigit() else 0
+        if dirty or ahead:
+            out["sync"] = {"dot": True, "title": f"올릴 변경 있음 (파일 {len(dirty)}개" + (f", 커밋 {ahead}개" if ahead else "") + ") — 변경 올리기"}
+    except Exception:  # noqa: BLE001
+        pass
+    return out
+
+
 def history(limit=30):
     try:
         lines = open(HISTORY, encoding="utf-8").read().splitlines()[-limit:]
@@ -83,23 +146,37 @@ def run(bot_id, action_id, params, log=True):
     if action.get("progress"):
         with ACTIVE_LOCK:
             ACTIVE[(bot_id, action_id)] = t0
+    key = (bot_id, action_id)
+    with ACTIVE_LOCK:
+        STOPPED.discard(key)
     try:
-        p = subprocess.run([sys.executable, "-I", "-X", "utf8", adapter, action_id], input=json.dumps(params, ensure_ascii=False),
-                           capture_output=True, text=True, encoding="utf-8", cwd=os.path.dirname(adapter), env=env,
-                           timeout=action.get("timeout", 300))
+        # 별도 프로세스 그룹으로 띄워 '중지' 때 하위 프로세스까지 함께 끌 수 있게
+        kw = {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP} if os.name == "nt" else {"start_new_session": True}
+        p = subprocess.Popen([sys.executable, "-I", "-X", "utf8", adapter, action_id], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE, text=True, encoding="utf-8", cwd=os.path.dirname(adapter), env=env, **kw)
+        with ACTIVE_LOCK:
+            RUNNING[key] = p
         try:
-            res = json.loads(p.stdout)
+            out, err = p.communicate(json.dumps(params, ensure_ascii=False), timeout=action.get("timeout", 300))
+        except subprocess.TimeoutExpired:
+            kill_tree(p)
+            p.communicate()
+            raise
+        try:
+            res = json.loads(out)
         except ValueError:
-            res = {"ok": p.returncode == 0, "text": (p.stdout + p.stderr).strip()}
-        if p.returncode != 0 and p.stderr.strip() and not res.get("text"):
-            res["text"] = p.stderr.strip()
-        if p.returncode != 0 and not p.stdout.strip() and not p.stderr.strip():  # '실행 중지' 등으로 강제 종료된 경우
-            res = {"ok": False, "headline": "⏹ 실행이 중지되었습니다", "text": "실행 도중 중지되었습니다.", "summary": "중지됨"}
+            res = {"ok": p.returncode == 0, "text": (out + err).strip()}
+        if p.returncode != 0 and err.strip() and not res.get("text"):
+            res["text"] = err.strip()
+        if key in STOPPED or (p.returncode != 0 and not out.strip() and not err.strip()):  # '중지' 등으로 강제 종료된 경우
+            res = {"ok": False, "stopped": True, "headline": "⏹ 실행이 중지되었습니다", "text": "실행 도중 중지되었습니다.", "summary": "중지됨"}
     except subprocess.TimeoutExpired:
         res = {"ok": False, "text": f"시간 초과 ({action.get('timeout', 300)}초)"}
     finally:
         with ACTIVE_LOCK:
             ACTIVE.pop((bot_id, action_id), None)
+            RUNNING.pop(key, None)
+            STOPPED.discard(key)
         try:
             os.remove(pfile)
         except OSError:
@@ -151,8 +228,13 @@ class Handler(BaseHTTPRequestHandler):
             import urllib.parse
             q = urllib.parse.parse_qs(self.path.split("?", 1)[1])
             return self.send(200, progress_of((q.get("bot") or [""])[0]))
+        if self.path == "/api/badges":
+            return self.send(200, badges())
         if self.path == "/api/history":
             return self.send(200, history())
+        if self.path == "/api/running":  # 지금 실행 중인 기능 목록 (화면 새로 고침 뒤 '중지' 버튼용)
+            with ACTIVE_LOCK:
+                return self.send(200, [{"bot": b, "action": a} for b, a in RUNNING])
         if self.path == "/api/limits":  # 상단 바의 한도 표시 — 실행 기록에 남기지 않음
             return self.send(200, run("daily-summary", "now", {}, log=False))
         self.send(404, {"ok": False, "text": "없는 경로"})
@@ -162,6 +244,12 @@ class Handler(BaseHTTPRequestHandler):
             return
         if self.path == "/api/upload":
             return self.upload()
+        if self.path == "/api/stop":
+            try:
+                req = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+            except ValueError:
+                return self.send(400, {"ok": False, "text": "요청 형식 오류"})
+            return self.send(200, stop(req.get("bot", ""), req.get("action", "")))
         if self.path != "/api/run":
             return self.send(404, {"ok": False, "text": "없는 경로"})
         try:

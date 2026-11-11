@@ -36,12 +36,13 @@
 ## 들어 있는 봇
 | 폴더 | 봇 | 기능 |
 |---|---|---|
-| bots/jira-tasks | JIRA 자동 생성기 | 직접 입력(요약·이슈 유형·보고자·담당자·우선순위·구성 요소·레이블·기한·설명) / 명령으로 생성 / 기본 하위 문서 / 별도 하위 문서 / 설정(기본 문서 목록·제품 등록) / 담당자 찾기 |
-| bots/spec-doc | 기획 사양 정리 (wiki) | 초안 만들기(위키·Drive·Figma → Claude가 [기획 사양 정리] 형식으로 작성) / 초안 목록·미리보기·위키 게시 |
+| bots/jira-tasks | Jira 자동 생성 | 직접 입력(요약·이슈 유형·보고자·담당자·우선순위·구성 요소·레이블·기한·설명) / 명령으로 생성 / 기본 하위 문서 / 별도 하위 문서 / 설정(기본 문서 목록·제품 등록) / 담당자 찾기 |
+| bots/spec-doc | 기획 사양 정리(위키) | 초안 만들기(위키·Drive·Figma → Claude가 [기획 사양 정리] 형식으로 작성) / 초안 목록·미리보기·위키 게시 |
 | bots/qa | QA 대응 | Jira 이슈 답변 / 문의사항 답변 (답변 초안 → 엑셀 → 메일, Jira·문서에는 안 씀) / 예약 발송 |
 | bots/meeting-room | 회의실 예약 | 회의실 잡기(일자·시간대·인원 → gapps 빈 회의실을 Google 캘린더 일정으로 예약) / 빈 회의실 보기 / 로그인. Playwright 필요(`pip install playwright`), 브라우저 로그인 상태는 `~/.playwright-edge-profile` |
 | bots/healthcare | 헬스케어 예약 | 가장 빠른 시간 찾기 / 예약하기(키퍼·시간대·희망 일자·시간) / 로그인. 포털 로그인에 NETSPASS 추가 인증이 있어 '로그인' 탭에서 직접 로그인하면 세션 쿠키를 `~/.config/work-bot/healthcare_cookies.json` 에 저장해 씀(만료 시 재로그인) |
 | bots/ims | IoT IMS | 등록·수정·삭제(147개 작업, `writes.py`: 기획·콘텐츠 메뉴만 — 기기 제어·펌웨어/OTA 배포·공장 출고·인증서·권한/사용자·AI/RAG·이미지 업로드는 제외. 작업 선택 + 경로 값/쿼리/본문 JSON → '미리보기'로 보낼 요청 확인 → 'IMS에 반영'(확인 창, 운영은 '운영' 입력 필요). 본문을 비우고 미리보기하면 `templates.json` 의 본문 틀(필드 이름) 표시. 실행 기록 `runs/ims/changes.jsonl`. **실제 반영은 아직 한 번도 시험하지 않음**) / 조회(37개 항목: 제품별 앱 설정 한눈에·기준정보·소모품·FAQ·공지·라이프스토리·자동화·대시보드 통계·운영 기기·POP 코드·OTA·프로토콜·프로젝트·공통 코드 → 표 + 엑셀 `runs/ims/`) / 로그인. 개발·운영 선택. IMS 로그인에 추가 인증이 있어 '로그인' 탭에서 직접 로그인하면 IMS 전용 브라우저 프로필 `~/.playwright-ims-profile` 에 세션이 남고, 조회는 그 프로필을 화면 없이 열어 IMS 화면이 보내는 인증 헤더로 API 를 부름(토큰을 따로 저장하지 않음). 항목 추가·수정은 `catalog.py` 를 고친 뒤 `python make_botjson.py` 로 bot.json 재생성. Playwright 필요 |
+| bots/qr-url | 앱 연결 QR·URL 등록 | 제품 추가(미리보기 → '시트에 반영 + QR 생성': 'CW_IoCare_IoT서비스 소개페이지 URL정의서' 최신 버전 'URL QR코드 리스트' 탭 마지막 행 아래 추가, 모델별 QR 이미지(200×200 JPEG·1px 흰 여백·ECC L·품질 75, OpenCV 있으면 스캔 검증)를 '제품별 QR코드 이미지' 폴더에 업로드, 문서이력 기록 — 오늘 버전이면 이어 쓰기/작성자 다르면 행 분리·버전·일자 병합, 새 버전이면 원본 사본 백업 후 파일명 Ver·일자 변경) / QR 다시 만들기(새 파일로 올리고 링크 교체, 옛 파일 휴지통) / 목록 확인. Google Drive·Sheets **쓰기** 토큰 필요: `credentials.json` 의 `gdrive_write_token`(drive·spreadsheets 범위 refresh_token 파일 경로) 또는 `~/.gmail-mcp/gsheets-token.json`. qrcode·Pillow 는 없으면 자동 설치 |
 | bots/daily-summary | 토큰 사용량 리포트 | 지금 사용량 / 날짜별 상세 / Mac+Windows 합산 기간 리포트 메일 |
 | bots/sync | IoT업무봇 동기화 | 상태 / 업데이트 받기 / 변경 올리기 |
 

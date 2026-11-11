@@ -240,6 +240,11 @@ main:has(.psmx) { max-width: none; }
 .prog .pbar.indet i { width: 30% !important; animation: pindet 1.4s ease-in-out infinite; }
 @keyframes pindet { 0% { margin-left: -30%; } 100% { margin-left: 100%; } }
 .prog .pmeta { display: flex; gap: 8px; align-items: baseline; margin-top: 5px; font-size: 13px; }
+.pstop { margin-left: auto; padding: 2px 10px; font-size: 12px; font-weight: 600; border-radius: 6px; cursor: pointer;
+  border: 1px solid #d64545; color: #d64545; background: transparent; line-height: 1.6; }
+.pstop:hover:not(:disabled) { background: #d64545; color: #fff; }
+.pstop:disabled { opacity: .55; cursor: default; }
+.status .pstop { margin-left: 8px; vertical-align: middle; }
 .prog .pmeta b { font-size: 15px; color: #1F6FD1; min-width: 44px; }
 .prog .pmeta .pt { margin-left: auto; color: var(--muted); white-space: nowrap; }
 #st .prog { display: inline-block; vertical-align: middle; width: min(520px, 100%); }
@@ -370,6 +375,20 @@ aside { padding: 12px 10px; gap: 0; }
 .app.mini .bot { grid-template-columns: 1fr; height: 38px; padding: 0; }
 .app.mini .bot .ic { width: 30px; height: 30px; }
 .app.mini .grp + .grp { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line); }
+/* 11/11 왼쪽 메뉴 정돈: 묶음 간격·제목 대비↑, 접기 버튼 위쪽, 배지(내 할 일 기한·동기화) */
+.grp + .grp { margin-top: 18px; }
+.grp h3 { font-size: 11.5px; font-weight: 700; color: #44546f; letter-spacing: .03em; padding: 0 10px 6px; }
+.navtoggle { top: calc(var(--topbar) + 12px); height: 32px; }
+.bot, .bot:not([aria-current="true"]) { grid-template-columns: 24px 1fr auto; position: relative; }
+.bot .bdg { font-style: normal; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: #e5484d; color: #fff;
+  font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; }
+.bot .bdg.dot { min-width: 0; width: 8px; height: 8px; padding: 0; border-radius: 50%; background: #f59e0b; }
+.app.mini .bot .bdg { position: absolute; top: 2px; right: 8px; }
+.app.mini .bot .bdg:not(.dot) { min-width: 16px; height: 16px; line-height: 16px; font-size: 10px; }
+/* 배지(<i>)가 마지막 자식이 되어도 이름 칸 규칙이 그대로 맞도록 — 2번째 자식(이름 칸) 기준 */
+.bot > span:nth-child(2) { min-width: 0; }
+.bot > span:nth-child(2) > span { display: none; }
+.app.mini .bot > span:nth-child(2) { display: none; }
 
 /* 본문 */
 main { padding: 22px clamp(16px, 3vw, 36px) 48px; gap: 16px; }
@@ -475,6 +494,7 @@ const ICON_PATHS = {
   "intimacy": '<circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M2.5 19c.6-3 2.8-5 5.5-5s4.9 2 5.5 5"/><path d="M13.5 14.3c.8-.2 1.6-.3 2.5-.3 2.7 0 4.9 2 5.5 5"/>',
   "product-status": '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11"/><path d="M12 13l1.2 1.2L15.5 12"/><path d="M12 17.5h5"/>',
   "figma-ux": '<rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M9 6h6"/><rect x="9" y="9" width="6" height="4" rx=".5"/><path d="M9 16h6M10 19h4"/>',
+  "qr-url": '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M6.5 6.5h.01M17.5 6.5h.01M6.5 17.5h.01"/><path d="M14 14h3M14 14v3M20.5 14v3M17.5 20.5h3M14 20.5h.01M17.5 17.5h.01"/>',
   "team-leave": '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><circle cx="12" cy="15.5" r="2"/><path d="M12 11.8v.6M12 18.6v.6M8.3 15.5h.6M15.1 15.5h.6"/>',
   "minutes": '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0 0 12 0"/><path d="M12 17v4M9 21h6"/>',
   "qa": '<path d="M21 12a8 8 0 0 1-11.5 7.2L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5"/><path d="M12 16h.01"/>',
@@ -488,10 +508,20 @@ const icon = b => ICON_PATHS[b.id]
   ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON_PATHS[b.id]}</svg>`
   : esc(b.icon || "🤖");
 
+let badges = {};
+// 배지: 내 할 일 = 오늘·지난 기한 건수(빨강 숫자), 동기화 = 올릴 변경 있음(주황 점). 마우스를 올리면 설명
+const badge = b => { const x = badges[b.id]; if (!x) return "";
+  return x.dot ? `<i class="bdg dot" title="${esc(x.title)}" aria-label="${esc(x.title)}"></i>` : `<i class="bdg" title="${esc(x.title)}" aria-label="${esc(x.title)}">${x.n}</i>`; };
+async function loadBadges() {
+  const r = await api("/api/badges").catch(() => null);
+  if (!r || typeof r !== "object" || r.ok === false) return;
+  const k = JSON.stringify(r); if (k === JSON.stringify(badges)) return;
+  badges = r; renderBots();
+}
 function renderBots() {
   const tip = b => b.tagline || (b.actions || []).filter(a => !a.hidden).map(a => a.label).join(" · ");
   const btn = b => `<button class="bot" data-id="${esc(b.id)}" aria-current="${bot && bot.id === b.id}" title="${esc(b.name + " — " + tip(b))}" aria-label="${esc(b.name)}">
-    <span class="ic">${icon(b)}</span><span><b>${esc(b.name)}</b><span>${esc(tip(b))}</span></span></button>`;
+    <span class="ic">${icon(b)}</span><span><b>${esc(b.name)}</b><span>${esc(tip(b))}</span></span>${badge(b)}</button>`;
   // bot.json 의 group 으로 묶는다 (순서는 order 순으로 처음 나온 묶음 순). group "system"(동기화 등)은 맨 아래에 따로
   const groups = new Map();
   bots.filter(b => b.group !== "system").forEach(b => { const g = b.group || "기타"; groups.has(g) || groups.set(g, []); groups.get(g).push(b); });
@@ -719,7 +749,7 @@ async function runAction(actId, params, as) {
   const k = bot.id + "/" + (as || actId), mine = () => curKey() === k;
   const adef = (bot.actions || []).find(a => a.id === actId) || {}, prog = !!adef.progress;
   // 실행 중에도 이전 결과(표)는 남겨 둔다 — 탭을 옮겼다 돌아오면 그 표 + 진행 게이지를 다시 보여 주기 위해
-  const s = runs[k] = { running: true, res: (runs[k] || {}).res, t0: Date.now(), prog: prog ? { pct: 0, msg: "시작하는 중" } : null, progTab: prog && !as, label: adef.label };
+  const s = runs[k] = { running: true, res: (runs[k] || {}).res, t0: Date.now(), prog: prog ? { pct: 0, msg: "시작하는 중" } : null, progTab: prog && !as, label: adef.label, bot: k.split("/")[0], act: actId };
   const st = (kind, msg) => { s.status = [kind, msg]; if (mine() && !(prog && kind === "run")) setStatus(kind, msg); };
   if (prog) { watchProgress(k, k.split("/")[0], actId); if (as && mine() && s.res) showResult(s.res, true); setTimeout(() => paintProg(k), 0); }
   const go = $("go"); if (go) go.disabled = true;
@@ -729,15 +759,18 @@ async function runAction(actId, params, as) {
   st("run", "실행 중…");
   // running_hint: 실행이 오래 걸릴 수 있는 기능(설치·로그인 창 등)에서 지금 사용자가 할 일을 함께 보여 준다
   const hint = ((bot.actions || []).find(a => a.id === actId) || {}).running_hint;
-  const tick = setInterval(() => { const sec = Math.round((Date.now() - t0) / 1000); st("run", `실행 중… ${sec}초` + (hint && sec >= 3 ? ` — ${hint}` : "")); }, 1000);
+  // 진행률 게이지가 없는 기능은 '실행 중…' 글자 옆에 중지 버튼 (1초 뒤부터 — 금방 끝나는 기능은 버튼이 깜빡이지 않게)
+  const addStop = () => { if (prog || !mine() || s.stopping) return; const el = $("st"); if (el && !el.querySelector(".pstop")) el.insertAdjacentHTML("beforeend", " " + stopBtn(s)); };
+  const tick = setInterval(() => { const sec = Math.round((Date.now() - t0) / 1000); if (s.stopping) { st("run", `중지하는 중… ${sec}초`); return; } st("run", `실행 중… ${sec}초` + (hint && sec >= 3 ? ` — ${hint}` : "")); addStop(); }, 1000);
   let res;
   try { res = await api("/api/run", { bot: k.split("/")[0], action: actId, params }); }
   catch (err) { res = { ok: false, text: "IoT업무봇 서버에 연결할 수 없습니다. 터미널에서 hub.py 가 실행 중인지 확인하세요." }; }
-  clearInterval(tick); s.running = false; s.res = res; s.prog = null; renderProgZone();
+  clearInterval(tick); s.running = false; s.res = res; s.prog = null; renderProgZone(); loadBadges();
   rel();
   if (mine() && $("go")) $("go").disabled = false;
   if (!isBusy(k.split("/")[0])) document.querySelectorAll("[data-extra]").forEach(b => b.disabled = false);
-  st(res.ok ? "ok" : "bad", res.ok ? `완료 (${((Date.now() - t0) / 1000).toFixed(1)}초)` : "오류");
+  s.stopping = false;
+  st(res.ok ? "ok" : "bad", res.ok ? `완료 (${((Date.now() - t0) / 1000).toFixed(1)}초)` : res.stopped ? "⏹ 중지됨" : "오류");
   if (mine()) showResult(res);
   if (bot && bot.id === k.split("/")[0]) renderTabs();
   loadHistory();
@@ -1187,13 +1220,33 @@ $("result").addEventListener("click", async e => {
 
 // 내 할 일: 기한 지남(별도 강조) → 기한 묶음 표(중요도 열) → 보류(기한 정해 되돌리기·삭제) → 완료(날짜별) → 내 일 아님
 // 진행률 게이지: 봇이 보고하는 % + 지금 하는 일 + 경과 시간. runs[k].prog 에 저장해 두므로 탭을 옮겼다 돌아와도 이어서 보인다
+// 공통 '중지' 버튼: 실행 중인 기능(s.bot·s.act)을 서버에서 하위 프로세스까지 함께 끈다
+function stopBtn(s) {
+  if (!s || !s.running || !s.bot || !s.act) return "";
+  return `<button type="button" class="pstop" data-stop-bot="${esc(s.bot)}" data-stop-act="${esc(s.act)}"${s.stopping ? " disabled" : ""}>${s.stopping ? "중지 중…" : "■ 중지"}</button>`;
+}
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-stop-bot]");
+  if (!b) return;
+  e.preventDefault(); e.stopPropagation();
+  if (!confirm("진행 중인 작업을 중지할까요?\n(이미 저장된 결과는 그대로 남고, 하던 일은 중간에 멈춥니다)")) return;
+  const botId = b.dataset.stopBot, act = b.dataset.stopAct;
+  Object.values(runs).forEach(r => { if (r.running && r.bot === botId && r.act === act) r.stopping = true; });
+  document.querySelectorAll(`[data-stop-bot="${CSS.escape(botId)}"][data-stop-act="${CSS.escape(act)}"]`).forEach(x => { x.disabled = true; x.textContent = "중지 중…"; });
+  const r = await api("/api/stop", { bot: botId, action: act }).catch(() => ({ ok: false, text: "서버 연결 실패" }));
+  if (!r.ok) alert("중지하지 못했습니다: " + (r.text || ""));
+  else if (!(r.stopped || []).length) {  // 서버엔 이미 끝났거나 화면만 실행 중으로 남은 경우 — 화면 표시를 풀어 준다
+    Object.values(runs).forEach(x => { if (x.running && x.bot === botId && x.act === act && x.restored) { x.running = false; x.prog = null; if (x.release) x.release(); } });
+    renderProgZone(); if (bot) selectBot(bot.id, action.id);
+  }
+});
 function progHTML(s) {
   const p = (s && s.prog) || {}, pct = typeof p.pct === "number" ? p.pct : null;
   const sec = s && s.t0 ? Math.max(0, Math.round((Date.now() - s.t0) / 1000)) : null;
   const el = sec === null ? "" : `경과 ${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
   return `<div class="prog" role="progressbar" aria-valuemin="0" aria-valuemax="100"${pct === null ? "" : ` aria-valuenow="${Math.round(pct)}"`}>
     <div class="pbar${pct === null ? " indet" : ""}"><i style="width:${pct || 0}%"></i></div>
-    <div class="pmeta"><b>${pct === null ? "…" : Math.floor(pct) + "%"}</b><span>${esc(p.msg || "시작하는 중")}</span><span class="pt">${el}</span></div></div>`;
+    <div class="pmeta"><b>${pct === null ? "…" : Math.floor(pct) + "%"}</b><span>${esc(p.msg || "시작하는 중")}</span><span class="pt">${el}</span>${stopBtn(s)}</div></div>`;
 }
 // 지금 보고 있는 봇에서 실행 중인 진행률 기능 중, 화면 다른 곳(맨 위 막대·실행 버튼 옆)에 게이지가 없는 것을 결과 카드 위에 모아 보여 준다
 function renderProgZone() {
@@ -1207,7 +1260,7 @@ function renderProgZone() {
 // 별도 버튼으로 실행하는 기능용: 진행률 추적 시작 → 끝낼 때 부르는 함수를 돌려준다
 function startProg(botId, actId, label) {
   const k = botId + "/" + actId;
-  const s = runs[k] = { ...(runs[k] || {}), running: true, t0: Date.now(), prog: { pct: 0, msg: "시작하는 중" }, label, watch: null };
+  const s = runs[k] = { ...(runs[k] || {}), running: true, t0: Date.now(), prog: { pct: 0, msg: "시작하는 중" }, label, watch: null, bot: botId, act: actId, stopping: false };
   watchProgress(k, botId, actId);
   renderProgZone();
   if (bot && bot.id === botId) renderTabs();
@@ -1248,7 +1301,7 @@ async function resumeProgress(b) {
     const k = b.id + "/" + (a.progress_tab || actId);
     if (runs[k] && runs[k].running && runs[k].prog) continue;  // 이미 게이지로 따라가는 중 (표 불러오기만 도는 중이면 덮어씀)
     const prev = runs[k] || {};
-    runs[k] = { running: true, res: prev.res, t0: cur.t0 * 1000, prog: { pct: cur.pct, msg: cur.msg }, progTab: !a.progress_tab, release: holdBusy(b.id), label: a.label };
+    runs[k] = { running: true, res: prev.res, t0: cur.t0 * 1000, prog: { pct: cur.pct, msg: cur.msg }, progTab: !a.progress_tab, release: holdBusy(b.id), label: a.label, bot: b.id, act: actId, restored: true };
     watchProgress(k, b.id, actId, true);
     if (bot && bot.id === b.id) selectBot(b.id, action.id);
   }
@@ -1496,7 +1549,7 @@ $("psdlg").addEventListener("submit", async e => {
   }
 });
 
-// 회의록 작성봇: 작업 목록(진행률 자동 새로 고침) → 미리보기 · 수정 요청 · 위키 게시
+// 회의록 작성: 작업 목록(진행률 자동 새로 고침) → 미리보기 · 수정 요청 · 위키 게시
 let mdoc = null, minPoll = null;
 const MIN_ST = { queued: "have", transcribing: "sim", drafting: "sim", ready: "new", published: "made", error: "bad" };
 const minDur = s => s ? (s >= 3600 ? `${Math.floor(s / 3600)}시간 ${Math.round(s % 3600 / 60)}분` : `${Math.max(1, Math.round(s / 60))}분`) : "";
@@ -1586,7 +1639,7 @@ function alertMin(msg, act) {
   else $("result").insertAdjacentHTML("afterbegin", `<p class="status bad">${esc(msg || "오류")}</p>`);
 }
 
-// Figma UX 기획봇: 설계안 확인 → 수정 요청(새 버전) → Figma에 그리기
+// Figma UX 기획: 설계안 확인 → 수정 요청(새 버전) → Figma에 그리기
 let ux = null;
 const uxList = (t, a) => a && a.length ? `<h5>${t}</h5><ol>${a.map(x => `<li>${esc(x)}</li>`).join("")}</ol>` : "";
 function renderUx(d) {
@@ -1775,6 +1828,7 @@ $("tabs").addEventListener("click", e => { const t = e.target.closest(".tab"); i
   selectBot(b, a);
   loadHistory();
   loadLimits(); setInterval(loadLimits, 5 * 60e3);
+  loadBadges(); setInterval(loadBadges, 60e3);
 })();
 </script>
 </body>

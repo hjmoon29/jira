@@ -1,0 +1,177 @@
+{
+  "name": "앱 연결 QR·URL 등록",
+  "icon": "🔳",
+  "order": 14,
+  "group": "기획 업무",
+  "tagline": "URL정의서에 제품 추가 + QR코드 생성",
+  "description": "제품 사용설명서·제품에 들어가는 IoCare 앱 연결 URL과 QR코드를 등록합니다. 'CW_IoCare_IoT서비스 소개페이지 URL정의서' 최신 버전의 'URL QR코드 리스트' 탭 마지막 행 아래에 제품을 추가하고(순서·URL은 시트 수식이 자동 생성), 모델명마다 기존 파일과 같은 규격(200×200 JPEG, 1px 흰 여백)의 QR 이미지를 만들어 '제품별 QR코드 이미지' 폴더에 올린 뒤 링크·입력 일시를 채웁니다. 문서이력도 함께 기록합니다(오늘 버전이 있으면 이어 쓰고 작성자가 다르면 행을 나눠 버전·일자 병합, 아니면 원본 사본 백업 후 새 버전).",
+  "actions": [
+    {
+      "id": "preview",
+      "label": "제품 추가",
+      "button": "미리보기",
+      "timeout": 120,
+      "init_action": "init",
+      "extra": [
+        {
+          "action": "apply",
+          "button": "시트에 반영 + QR 생성",
+          "confirm": "URL정의서에 행을 추가하고 QR 이미지를 Drive 폴더에 올린 뒤 문서이력을 기록합니다. 계속할까요?"
+        }
+      ],
+      "fields": [
+        {
+          "name": "items",
+          "label": "추가할 제품 (한 줄에 하나)",
+          "type": "textarea",
+          "required": true,
+          "placeholder": "정수기 | 말련향 아이콘 프로 | CHP-7212N_V2_MY | Y | Y\n정수기 | 말련향 엘리트 빌트인 | TBD | Y | Y",
+          "help": "제품군 | 프로젝트명 | 모델명 | 매뉴얼(Y/N) | 제품 내 사용(Y/N) | 기타사항(선택). 모델명은 영문·숫자·'-', 국가 구분은 '_국가코드 2글자'(예: _MY). 모델명이 아직 없으면 TBD — 행만 넣고 URL·QR은 만들지 않습니다."
+        },
+        {
+          "name": "make_qr",
+          "label": "QR코드 이미지 만들어 폴더에 올리기",
+          "type": "checkbox",
+          "default": true
+        },
+        {
+          "name": "write_history",
+          "label": "문서이력에 기록",
+          "type": "checkbox",
+          "default": true
+        },
+        {
+          "name": "version_mode",
+          "label": "문서이력 버전",
+          "type": "select",
+          "options": [
+            "자동",
+            "같은 버전에 이어 쓰기",
+            "새 버전으로 기록"
+          ],
+          "default": "자동",
+          "help": "자동 = 마지막 이력 일자가 오늘이면 같은 버전, 아니면 새 버전(원본 사본 백업 → 파일명 Ver·일자 변경)",
+          "show_if": {
+            "write_history": true
+          }
+        },
+        {
+          "name": "history",
+          "label": "문서이력 변경 내용 (비우면 자동 작성)",
+          "type": "textarea",
+          "placeholder": " - 말련향 정수기 2종(아이콘 프로·엘리트 빌트인) 추가",
+          "show_if": {
+            "write_history": true
+          }
+        },
+        {
+          "name": "author",
+          "label": "작성자",
+          "type": "text",
+          "placeholder": "IoT기획팀 홍길동",
+          "required": true,
+          "show_if": {
+            "write_history": true
+          },
+          "default": "IoT기획팀 문효준"
+        }
+      ]
+    },
+    {
+      "id": "apply",
+      "label": "시트에 반영",
+      "hidden": true,
+      "button": "시트에 반영 + QR 생성",
+      "timeout": 300,
+      "confirm": "URL정의서에 행을 추가하고 QR 이미지를 Drive 폴더에 올린 뒤 문서이력을 기록합니다. 계속할까요?",
+      "fields": [
+        {
+          "name": "items",
+          "label": "추가할 제품 (한 줄에 하나)",
+          "type": "textarea",
+          "required": true,
+          "placeholder": "정수기 | 말련향 아이콘 프로 | CHP-7212N_V2_MY | Y | Y\n정수기 | 말련향 엘리트 빌트인 | TBD | Y | Y",
+          "help": "제품군 | 프로젝트명 | 모델명 | 매뉴얼(Y/N) | 제품 내 사용(Y/N) | 기타사항(선택). 모델명은 영문·숫자·'-', 국가 구분은 '_국가코드 2글자'(예: _MY). 모델명이 아직 없으면 TBD — 행만 넣고 URL·QR은 만들지 않습니다."
+        },
+        {
+          "name": "make_qr",
+          "label": "QR코드 이미지 만들어 폴더에 올리기",
+          "type": "checkbox",
+          "default": true
+        },
+        {
+          "name": "write_history",
+          "label": "문서이력에 기록",
+          "type": "checkbox",
+          "default": true
+        },
+        {
+          "name": "version_mode",
+          "label": "문서이력 버전",
+          "type": "select",
+          "options": [
+            "자동",
+            "같은 버전에 이어 쓰기",
+            "새 버전으로 기록"
+          ],
+          "default": "자동",
+          "help": "자동 = 마지막 이력 일자가 오늘이면 같은 버전, 아니면 새 버전(원본 사본 백업 → 파일명 Ver·일자 변경)",
+          "show_if": {
+            "write_history": true
+          }
+        },
+        {
+          "name": "history",
+          "label": "문서이력 변경 내용 (비우면 자동 작성)",
+          "type": "textarea",
+          "placeholder": " - 말련향 정수기 2종(아이콘 프로·엘리트 빌트인) 추가",
+          "show_if": {
+            "write_history": true
+          }
+        },
+        {
+          "name": "author",
+          "label": "작성자",
+          "type": "text",
+          "placeholder": "IoT기획팀 홍길동",
+          "required": true,
+          "show_if": {
+            "write_history": true
+          },
+          "default": "IoT기획팀 문효준"
+        }
+      ]
+    },
+    {
+      "id": "requr",
+      "label": "QR 다시 만들기",
+      "button": "다시 만들기",
+      "timeout": 180,
+      "confirm": "이 모델의 QR 이미지를 새로 만들어 올리고 시트 링크를 바꿉니다. 옛 이미지는 휴지통으로 옮깁니다. 계속할까요?",
+      "fields": [
+        {
+          "name": "model",
+          "label": "모델명",
+          "type": "text",
+          "required": true,
+          "placeholder": "CHP-7212N_V2_MY",
+          "help": "목록에 있는 모델의 QR이 깨졌거나 규격이 다를 때. 같은 파일에 덮어쓰면 Drive 미리보기가 옛 이미지로 남아 새 파일로 올립니다."
+        }
+      ]
+    },
+    {
+      "id": "find",
+      "label": "목록 확인",
+      "button": "조회",
+      "timeout": 120,
+      "fields": [
+        {
+          "name": "q",
+          "label": "검색어 (제품군·프로젝트명·모델명, 비우면 전체)",
+          "type": "text",
+          "placeholder": "말련향"
+        }
+      ]
+    }
+  ]
+}

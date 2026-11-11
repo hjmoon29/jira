@@ -190,7 +190,7 @@ def jira():
     except Exception as e:
         raise BotError(f"Jira 모듈을 불러오지 못했습니다: {e}")
     if not os.path.isfile(jt.TOKEN_FILE):
-        raise BotError(f"Jira 토큰이 없습니다 ({jt.TOKEN_FILE}). 'JIRA 자동 생성기' 설정을 먼저 해 주세요.")
+        raise BotError(f"Jira 토큰이 없습니다 ({jt.TOKEN_FILE}). 'Jira 자동 생성' 설정을 먼저 해 주세요.")
     return jt
 
 
