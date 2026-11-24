@@ -115,6 +115,8 @@ def badges():
         out["sync"] = {"dot": True, "title": "IoT업무봇 본체가 업데이트됨 — 껐다 켜야 반영됩니다"}
     elif AUTO_SYNC["at"] and not AUTO_SYNC["ok"]:
         out["sync"] = {"dot": True, "title": f"{AUTO_SYNC['at']} {AUTO_SYNC['text']}"}
+    elif DATA_SYNC["at"] and not DATA_SYNC["ok"]:
+        out["sync"] = {"dot": True, "title": f"{DATA_SYNC['at']} 데이터 동기화 문제 — '데이터 맞추기'에서 확인"}
     return out
 
 
@@ -155,6 +157,61 @@ def auto_sync_once():
         AUTO_SYNC["restart"] = True  # 화면·봇은 바로 반영되지만 hub.py 자체는 껐다 켜야 반영
     AUTO_SYNC.update(at=time.strftime("%H:%M"), ok=bool(res.get("ok")),
                      text=f"변경 {what}" if res.get("ok") else f"자동 동기화 실패 — '{('변경 올리기' if what == '올림' else '업데이트 받기')}'에서 내용 확인")
+
+
+# 데이터(runs/) 동기화: Google Drive 'IoT업무봇/runs' 와 3분마다 + 봇 실행 직후 (BOT_HUB_DATA_SYNC_MIN, 0 이면 끔)
+DATA_SYNC_MIN = int(os.environ.get("BOT_HUB_DATA_SYNC_MIN", "3") or 0)
+DATA_SYNC = {"at": "", "ok": True, "text": ""}
+DATA_LOCK = threading.Lock()
+
+
+def runs_fingerprint():
+    """runs/ 파일 (경로, 수정 시각, 크기) 요약 — 봇 실행 뒤 데이터가 실제로 바뀌었을 때만 맞추려고"""
+    h = []
+    for d, dirs, files in os.walk(RUNS):
+        dirs[:] = [x for x in dirs if x not in (".sync", "progress")]
+        for f in files:
+            try:
+                st = os.stat(os.path.join(d, f))
+                h.append((d, f, st.st_mtime, st.st_size))
+            except OSError:
+                pass
+    return hash(tuple(sorted(h)))
+
+
+DATA_SYNC["fp"] = None
+DATA_SYNC["again"] = False
+
+
+def data_sync_now(after_run=False):
+    if not DATA_SYNC_MIN:
+        return
+    if after_run and runs_fingerprint() == DATA_SYNC["fp"]:
+        return
+    if not DATA_LOCK.acquire(blocking=False):
+        DATA_SYNC["again"] = True  # 지금 도는 회차가 끝나면 한 번 더
+        return
+    try:
+        with ACTIVE_LOCK:
+            busy = [k for k in ACTIVE if k[0] != "sync"]
+        if busy:
+            return
+        DATA_SYNC["again"] = False
+        res = run("sync", "data", {"quiet": True}, log=False)
+        DATA_SYNC.update(at=time.strftime("%H:%M"), ok=bool(res.get("ok")), text=(res.get("text") or "")[:300], fp=runs_fingerprint())
+    except Exception as e:  # noqa: BLE001
+        DATA_SYNC.update(at=time.strftime("%H:%M"), ok=False, text=f"데이터 동기화 오류: {e.__class__.__name__}")
+    finally:
+        DATA_LOCK.release()
+    if DATA_SYNC["again"]:
+        data_sync_now(after_run=True)
+
+
+def data_sync_loop():
+    time.sleep(8)
+    while True:
+        data_sync_now()
+        time.sleep(DATA_SYNC_MIN * 60)
 
 
 def auto_sync_loop():
@@ -235,6 +292,8 @@ def run(bot_id, action_id, params, log=True):
         except OSError:
             pass
     res.setdefault("ok", True)
+    if bot_id != "sync":  # 봇이 데이터를 바꿨으면 바로 다른 PC 와 맞춤 (안 바뀌었으면 건너뜀)
+        threading.Thread(target=data_sync_now, kwargs={"after_run": True}, daemon=True).start()
     if res.get("quiet") or not log:  # 화면 내부용 호출(자동완성 목록 등)은 실행 기록에 남기지 않음
         return res
     entry = {"t": int(t0), "bot": bot["name"], "action": action["label"], "ok": res["ok"],
@@ -367,6 +426,9 @@ def main():
     print(f"IoT업무봇(Beta) 실행 중 → {url}  (끝내려면 이 창에서 Ctrl+C)")
     if "--no-browser" not in sys.argv:
         threading.Timer(0.6, lambda: webbrowser.open(url)).start()
+    if DATA_SYNC_MIN > 0:
+        threading.Thread(target=data_sync_loop, daemon=True).start()
+        print(f"데이터 동기화: {DATA_SYNC_MIN}분마다·봇 실행 직후 runs/ 를 Google Drive 'IoT업무봇/runs' 와 맞춤 (끄려면 BOT_HUB_DATA_SYNC_MIN=0)")
     if AUTO_SYNC_MIN > 0:
         threading.Thread(target=auto_sync_loop, daemon=True).start()
         print(f"자동 동기화: {AUTO_SYNC_MIN}분마다 Git 저장소와 맞춤 (끄려면 BOT_HUB_AUTO_SYNC_MIN=0)")

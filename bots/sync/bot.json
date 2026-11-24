@@ -3,7 +3,7 @@
   "icon": "🔄",
   "order": 90,
   "group": "system",
-  "tagline": "팀원·PC 간 봇 코드 맞추기",
+  "tagline": "PC 간 봇 코드·데이터 맞추기",
   "description": "모든 PC·팀원이 같은 IoT업무봇을 쓰도록 Git 저장소와 맞춥니다. 다른 사람이 고친 봇·설정을 받거나, 이 PC에서 고친 것을 올립니다. 올리기 전에 올릴 파일 목록을 보여 주고, 토큰·비밀번호·API 키가 섞여 있으면 올리지 않습니다.",
   "actions": [
     {"id": "status", "label": "상태", "auto": true, "timeout": 60, "fields": []},
@@ -11,6 +11,8 @@
      "fields": [{"name": "remote", "label": "저장소 주소", "type": "text", "default": "https://github.com/hjmoon29/jira.git",
                  "help": "zip으로 설치한 PC에서 처음 한 번만. Git 설치와 저장소 접근 권한(GitHub 초대)이 필요합니다."}]},
     {"id": "pull", "label": "업데이트 받기", "button": "받기", "timeout": 120, "fields": []},
+    {"id": "data", "label": "데이터 맞추기", "button": "맞추기", "timeout": 600, "fields": [],
+     "help": "실행 기록·내 할 일·회의록·결과 파일 등 runs/ 데이터를 Google Drive 'IoT업무봇/runs' 와 맞춥니다. 켜 있는 동안 3분마다·봇 실행 직후 자동으로도 합니다."},
     {
       "id": "push",
       "label": "변경 올리기",

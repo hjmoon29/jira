@@ -33,6 +33,8 @@
   설정을 바꾼 뒤 '변경 올리기' 를 해야 다른 PC에 반영된다.
 - **자동 동기화**: IoT업무봇이 켜 있는 동안 10분마다(시작 5초 뒤 첫 회) 이 PC 변경이 있으면 자동 '변경 올리기'(비밀값 검사 통과 시, 메시지 앞에 `[자동 동기화]`), 없으면 다른 PC 변경을 자동 '업데이트 받기'. 봇 실행 중에는 건너뜀. 간격은 환경변수 `BOT_HUB_AUTO_SYNC_MIN`(0 이면 끔). 실패하거나 hub.py 자체가 바뀌어 재시작이 필요하면 동기화 메뉴에 점이 뜬다.
 - 충돌이 나면 Claude Code에 "IoT업무봇 git 충돌 해결해줘".
+- **데이터 자동 동기화** (`bots/sync/data_sync.py`): `runs/` 의 실행 기록·내 할 일·회의록·결과 파일 등을 Google Drive `IoT업무봇/runs/` 와 3분마다 + 봇 실행 직후(데이터가 바뀐 경우) 양방향으로 맞춘다. 두 PC가 같은 파일을 고쳤으면 내 할 일(할 일별 최신)·실행 기록(줄 합치기)·id 목록은 합치고, 그 밖의 파일은 최근 수정본을 쓰고 다른 쪽은 `runs/.sync/conflicts/` 에 남긴다. 지운 파일은 전파하지 않는다. 제외: 제품별 진행상황(자체 동기화)·진행률·잠금/임시/로그·업로드 원본·30MB 초과. 수동 실행: 동기화 봇 '데이터 맞추기'. 끄기: `BOT_HUB_DATA_SYNC_MIN=0`.
+- **PC마다 따로 두는 것** (비밀값이라 공유 안 함): Jira 토큰 `~/.config/jira-bot/token`, 위키·Figma·Drive 쓰기 토큰 `~/.config/work-bot/credentials.json`(`인증 설정`), 메일·Drive `~/.config/claude-daily/`, 회의실·헬스케어·IMS 로그인 브라우저 프로필. 예약 실행(QA 예약, 내 할 일 아침 실행)은 OS 예약 작업을 등록한 PC에서만 돈다(Mac은 LaunchAgents 사용 불가라 Windows가 담당).
 - **데이터**: 제품별 진행상황은 Google Drive `IoT업무봇/product-status/products.json` 하나를 같이 쓴다. Windows는 Drive 폴더(G:)에 바로, Drive 앱이 없는 Mac은 Drive API(`~/.config/claude-daily/gmail.json`+`drive.json`)로 열 때 받아오고 저장할 때 올린다.
 
 ## 들어 있는 봇

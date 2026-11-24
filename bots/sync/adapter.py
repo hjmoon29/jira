@@ -212,6 +212,14 @@ def status(q):
         lines.append("⬆ 아직 올리지 않은 기록이 있습니다 → '변경 올리기'")
     if not behind and not ch and not ahead:
         lines.append("✓ 최신 상태입니다")
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import data_sync
+        d = data_sync.last()
+        if d:
+            lines += ["", f"데이터(runs/) 동기화: {d.get('at', '')} {'✓' if d.get('ok') else '⚠'}", "   " + (d.get("text") or "").replace("\n", "\n   ")]
+    except Exception:  # noqa: BLE001
+        pass
     lines += ["", "최근 변경 기록", logs or "(없음)"]
     out(ok=True, text="\n".join(lines), summary=("업데이트 있음 " if behind else "") + (f"바뀐 파일 {len(ch)}개" if ch else "최신" if not behind else ""))
 
@@ -289,7 +297,15 @@ def connect(q):
         summary="저장소 연결")
 
 
+def data(q):
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import data_sync
+    r = data_sync.sync()
+    out(ok=r["ok"], quiet=bool(q.get("quiet")) and r["ok"], text=r["text"],
+        summary=("데이터 맞춤: " + ", ".join(f"{k} {r[k]}" for k in ("up", "down", "merged", "conflicts") if r.get(k))) if r.get("changed") else "데이터 최신")
+
+
 if __name__ == "__main__":
     action = sys.argv[1] if len(sys.argv) > 1 else ""
     q = json.loads(sys.stdin.read() or "{}")
-    {"status": status, "pull": pull, "push": push, "connect": connect, "preview": preview, "push_init": push_init}.get(action, lambda q: out(ok=False, text="알 수 없는 기능"))(q)
+    {"status": status, "pull": pull, "push": push, "connect": connect, "preview": preview, "push_init": push_init, "data": data}.get(action, lambda q: out(ok=False, text="알 수 없는 기능"))(q)

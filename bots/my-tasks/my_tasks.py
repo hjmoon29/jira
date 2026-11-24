@@ -56,6 +56,14 @@ def jload(path, default):
 
 def jsave(path, obj):
     os.makedirs(os.path.dirname(path), exist_ok=True)
+    if path in (TASKS, STATE) and os.path.isfile(path):
+        # 실행 도중 다른 PC 변경(데이터 동기화로 받은 것)이 디스크에 들어왔을 수 있어 합쳐서 저장
+        import shared_merge
+        disk = jload(path, None)
+        if path == TASKS and isinstance(disk, list) and isinstance(obj, list):
+            obj = shared_merge.merge_tasks(obj, disk)
+        elif path == STATE and isinstance(disk, dict) and isinstance(obj, dict):
+            obj = shared_merge.merge_state(obj, disk)
     tmp = path + ".tmp"
     json.dump(obj, open(tmp, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     os.replace(tmp, path)
