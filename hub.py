@@ -111,7 +111,60 @@ def badges():
             out["sync"] = {"dot": True, "title": f"올릴 변경 있음 (파일 {len(dirty)}개" + (f", 커밋 {ahead}개" if ahead else "") + ") — 변경 올리기"}
     except Exception:  # noqa: BLE001
         pass
+    if AUTO_SYNC["restart"]:
+        out["sync"] = {"dot": True, "title": "IoT업무봇 본체가 업데이트됨 — 껐다 켜야 반영됩니다"}
+    elif AUTO_SYNC["at"] and not AUTO_SYNC["ok"]:
+        out["sync"] = {"dot": True, "title": f"{AUTO_SYNC['at']} {AUTO_SYNC['text']}"}
     return out
+
+
+# ── 자동 동기화: 켜 있는 동안 주기적으로 Git 저장소와 맞춰 Mac·Windows 가 같은 봇 코드를 쓰게 함 ──
+# 이 PC 변경이 있으면 '변경 올리기'(비밀값 검사 → 커밋 → 다른 PC 변경 합치기 → 올리기), 없으면 '업데이트 받기'.
+# 간격(분)은 환경변수 BOT_HUB_AUTO_SYNC_MIN (기본 10, 0 이면 끔). 봇이 실행 중이면 그 회차는 건너뜀.
+AUTO_SYNC_MIN = int(os.environ.get("BOT_HUB_AUTO_SYNC_MIN", "10") or 0)
+AUTO_SYNC = {"at": "", "text": "", "ok": True, "restart": False}
+
+
+def auto_sync_once():
+    if not os.path.isdir(os.path.join(HERE, ".git")):
+        return
+    with ACTIVE_LOCK:
+        if ACTIVE:
+            return
+    g = lambda *a: subprocess.run(["git", *a], cwd=HERE, capture_output=True, text=True, encoding="utf-8",
+                                  errors="replace", timeout=60, env=dict(os.environ, GIT_TERMINAL_PROMPT="0"))
+    before = g("rev-parse", "HEAD").stdout.strip()
+    dirty = [l for l in g("status", "--porcelain").stdout.splitlines() if l.strip()]
+    ahead = g("rev-list", "--count", "@{u}..HEAD").stdout.strip()
+    if dirty or (ahead.isdigit() and int(ahead)):
+        msg = ((run("sync", "push_init", {}, log=False).get("data") or {}).get("values") or {}).get("message") or "봇 수정"
+        res = run("sync", "push", {"message": "[자동 동기화] " + msg})
+        what = "올림"
+    else:
+        if g("fetch", "--quiet", "origin").returncode != 0:
+            AUTO_SYNC.update(at=time.strftime("%H:%M"), ok=False, text="저장소에 연결하지 못함 (네트워크 확인)")
+            return
+        behind = g("rev-list", "--count", "HEAD..@{u}").stdout.strip()
+        if not (behind.isdigit() and int(behind)):
+            AUTO_SYNC.update(at=time.strftime("%H:%M"), ok=True, text="최신 상태")
+            return
+        res = run("sync", "pull", {})
+        what = "받음"
+    after = g("rev-parse", "HEAD").stdout.strip()
+    if res.get("ok") and before != after and g("diff", "--name-only", before, after, "--", "hub.py").stdout.strip():
+        AUTO_SYNC["restart"] = True  # 화면·봇은 바로 반영되지만 hub.py 자체는 껐다 켜야 반영
+    AUTO_SYNC.update(at=time.strftime("%H:%M"), ok=bool(res.get("ok")),
+                     text=f"변경 {what}" if res.get("ok") else f"자동 동기화 실패 — '{('변경 올리기' if what == '올림' else '업데이트 받기')}'에서 내용 확인")
+
+
+def auto_sync_loop():
+    time.sleep(5)
+    while True:
+        try:
+            auto_sync_once()
+        except Exception as e:  # noqa: BLE001
+            AUTO_SYNC.update(at=time.strftime("%H:%M"), ok=False, text=f"자동 동기화 오류: {e.__class__.__name__}")
+        time.sleep(AUTO_SYNC_MIN * 60)
 
 
 def history(limit=30):
@@ -314,6 +367,9 @@ def main():
     print(f"IoT업무봇(Beta) 실행 중 → {url}  (끝내려면 이 창에서 Ctrl+C)")
     if "--no-browser" not in sys.argv:
         threading.Timer(0.6, lambda: webbrowser.open(url)).start()
+    if AUTO_SYNC_MIN > 0:
+        threading.Thread(target=auto_sync_loop, daemon=True).start()
+        print(f"자동 동기화: {AUTO_SYNC_MIN}분마다 Git 저장소와 맞춤 (끄려면 BOT_HUB_AUTO_SYNC_MIN=0)")
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

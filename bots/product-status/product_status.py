@@ -76,28 +76,137 @@ def cfg():
     return json.load(open(CONFIG, encoding="utf-8"))
 
 
-def load():
+# ── Drive 앱이 없는 PC(Mac): Drive API 로 같은 'IoT업무봇/product-status/products.json' 을 주고받음 ──
+# 인증: WORKBOT_DRIVE_API 폴더(기본 ~/.config/claude-daily)의 gmail.json(client_id·client_secret) + drive.json(refresh_token, drive 범위)
+API_DIR = os.path.expanduser(os.environ.get("WORKBOT_DRIVE_API") or "~/.config/claude-daily")
+FILE_ID_CACHE = os.path.join(LOCAL_DIR, ".drive_file_id")
+SYNC = {"note": ""}
+
+
+def _api_on():
+    return DATA_DIR == LOCAL_DIR and all(os.path.isfile(os.path.join(API_DIR, f)) for f in ("gmail.json", "drive.json"))
+
+
+def _http(method, url, token=None, body=None, ctype="application/json", raw=False):
+    import urllib.request
+    h = {"Content-Type": ctype}
+    if token:
+        h["Authorization"] = "Bearer " + token
+    with urllib.request.urlopen(urllib.request.Request(url, body, h, method=method), timeout=20) as r:
+        b = r.read()
+    return b if raw else json.loads(b or b"{}")
+
+
+def _api_token():
+    import urllib.parse
+    client = json.load(open(os.path.join(API_DIR, "gmail.json")))
+    conf = json.load(open(os.path.join(API_DIR, "drive.json")))
+    body = urllib.parse.urlencode({"client_id": client["client_id"], "client_secret": client["client_secret"],
+                                   "refresh_token": conf["refresh_token"], "grant_type": "refresh_token"}).encode()
+    return _http("POST", "https://oauth2.googleapis.com/token", body=body, ctype="application/x-www-form-urlencoded")["access_token"]
+
+
+def _api_find(token, q):
+    import urllib.parse
+    url = "https://www.googleapis.com/drive/v3/files?" + urllib.parse.urlencode({
+        "q": q + " and trashed = false", "fields": "files(id,name)", "pageSize": 10,
+        "supportsAllDrives": "true", "includeItemsFromAllDrives": "true"})
+    return _http("GET", url, token)["files"]
+
+
+def _api_file_id(token):
     try:
-        d = json.load(open(DATA, encoding="utf-8"))
-    except (OSError, ValueError):
-        d = {}
-    d.setdefault("products", [])
-    return d
+        return open(FILE_ID_CACHE).read().strip()
+    except OSError:
+        pass
+    parent = None
+    for name in DRIVE_SUB.replace("\\", "/").split("/"):
+        hits = _api_find(token, f"name = '{name}' and mimeType = 'application/vnd.google-apps.folder'"
+                         + (f" and '{parent}' in parents" if parent else ""))
+        if not hits:
+            return None
+        parent = hits[0]["id"]
+    hits = _api_find(token, f"name = 'products.json' and '{parent}' in parents")
+    if not hits:
+        return None
+    os.makedirs(LOCAL_DIR, exist_ok=True)
+    open(FILE_ID_CACHE, "w").write(hits[0]["id"])
+    return hits[0]["id"]
 
 
-def save(d):
+def _api_push(d, token=None, fid=None):
+    token = token or _api_token()
+    fid = fid or _api_file_id(token)
+    if not fid:
+        raise OSError("Drive 에서 IoT업무봇/product-status/products.json 을 찾지 못함")
+    body = json.dumps(d, ensure_ascii=False, indent=2).encode("utf-8")
+    _http("PATCH", f"https://www.googleapis.com/upload/drive/v3/files/{fid}?uploadType=media&supportsAllDrives=true",
+          token, body)
+
+
+def _api_sync(local):
+    """Drive 본과 이 PC 사본 중 'updated' 가 최신인 쪽으로 맞춤 (같으면 Drive 우선). 실패해도 이 PC 사본으로 계속"""
+    try:
+        token = _api_token()
+        fid = _api_file_id(token)
+        if not fid:
+            SYNC["note"] = "Drive 파일을 못 찾아 이 PC 사본 사용"
+            return local
+        remote = json.loads(_http("GET", f"https://www.googleapis.com/drive/v3/files/{fid}?alt=media&supportsAllDrives=true",
+                                  token, raw=True).decode("utf-8"))
+        remote.setdefault("products", [])
+        if (local.get("updated") or "") > (remote.get("updated") or ""):
+            _api_push(local, token, fid)  # 지난번 올리기에 실패한 이 PC 변경분
+            SYNC["note"] = "Drive 동기화됨 (이 PC 변경분 올림)"
+            return local
+        if remote != local:
+            _write_local(remote)
+        SYNC["note"] = "Drive 동기화됨"
+        return remote
+    except Exception as e:  # noqa: BLE001  네트워크·토큰 문제
+        SYNC["note"] = f"Drive 동기화 실패, 이 PC 사본 사용 ({e.__class__.__name__})"
+        return local
+
+
+def _write_local(d):
     os.makedirs(DATA_DIR, exist_ok=True)
     tmp = DATA + ".tmp"
     json.dump(d, open(tmp, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
     os.replace(tmp, DATA)
 
 
+def load():
+    try:
+        d = json.load(open(DATA, encoding="utf-8"))
+    except (OSError, ValueError):
+        d = {}
+    d.setdefault("products", [])
+    if _api_on():
+        d = _api_sync(d)
+    return d
+
+
+def save(d):
+    _write_local(d)
+    if _api_on():
+        try:
+            _api_push(d)
+            SYNC["note"] = "Drive 동기화됨"
+        except Exception as e:  # noqa: BLE001  다음 load 때 다시 올림
+            SYNC["note"] = f"Drive 올리기 실패, 다음에 다시 시도 ({e.__class__.__name__})"
+
+
 def board(d=None):
     d = d or load()
     c = cfg()
+    if DATA_DIR != LOCAL_DIR:
+        store = "Google Drive · " + DATA
+    elif _api_on():
+        store = f"Google Drive (API · {SYNC['note'] or '동기화'}) · IoT업무봇/product-status/products.json"
+    else:
+        store = "이 PC (Google Drive 폴더를 못 찾음" + (f" — {DRIVE_TRIED}" if DRIVE_TRIED else "") + ") · " + DATA
     return {"stages": c["stages"], "statuses": c["statuses"], "products": d["products"],
-            "updated": d.get("updated"), "jira_at": d.get("jira_at"),
-            "store": ("Google Drive · " if DATA_DIR != LOCAL_DIR else "이 PC (Google Drive 폴더를 못 찾음" + (f" — {DRIVE_TRIED}" if DRIVE_TRIED else "") + ") · ") + DATA}
+            "updated": d.get("updated"), "jira_at": d.get("jira_at"), "store": store}
 
 
 def find(d, pid):

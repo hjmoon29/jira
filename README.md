@@ -31,7 +31,9 @@
 - 화면의 **🔄 IoT업무봇 동기화**: 상태 확인 → **업데이트 받기**(다른 PC 변경 받기) / **변경 올리기**(이 PC 변경 올리기)
 - Jira 기본 하위 문서 목록·제품 등록(`bots/jira-tasks/config.json`)도 저장소에 들어 있어 두 PC가 같은 설정을 쓴다.
   설정을 바꾼 뒤 '변경 올리기' 를 해야 다른 PC에 반영된다.
-- 작업 시작 전 '업데이트 받기', 끝나면 '변경 올리기' 습관. 충돌이 나면 Claude Code에 "IoT업무봇 git 충돌 해결해줘".
+- **자동 동기화**: IoT업무봇이 켜 있는 동안 10분마다(시작 5초 뒤 첫 회) 이 PC 변경이 있으면 자동 '변경 올리기'(비밀값 검사 통과 시, 메시지 앞에 `[자동 동기화]`), 없으면 다른 PC 변경을 자동 '업데이트 받기'. 봇 실행 중에는 건너뜀. 간격은 환경변수 `BOT_HUB_AUTO_SYNC_MIN`(0 이면 끔). 실패하거나 hub.py 자체가 바뀌어 재시작이 필요하면 동기화 메뉴에 점이 뜬다.
+- 충돌이 나면 Claude Code에 "IoT업무봇 git 충돌 해결해줘".
+- **데이터**: 제품별 진행상황은 Google Drive `IoT업무봇/product-status/products.json` 하나를 같이 쓴다. Windows는 Drive 폴더(G:)에 바로, Drive 앱이 없는 Mac은 Drive API(`~/.config/claude-daily/gmail.json`+`drive.json`)로 열 때 받아오고 저장할 때 올린다.
 
 ## 들어 있는 봇
 | 폴더 | 봇 | 기능 |
