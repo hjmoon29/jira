@@ -1,0 +1,6 @@
+{
+  "model": "",
+  "lookback_days": 7,
+  "auto_time": "08:20",
+  "mail_exclude": "-subject:\"일일요약\" -subject:\"데일리 써머리\" -subject:\"IoT업무봇\" -subject:\"COWAY-JIRA\""
+}

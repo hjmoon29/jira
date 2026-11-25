@@ -1,0 +1,26 @@
+{
+  "name": "프로젝트 대응",
+  "icon": "🗂️",
+  "order": 4,
+  "group": "내 업무",
+  "tagline": "프로젝트별 메일·Jira·할 일·파일을 한 곳에서",
+  "description": "프로젝트(제품 대응 등)마다 섹션을 만들어, 그 프로젝트로 오간 메일 요약, Jira 생성·변경 내역, 해야 할 일, 다운로드한 엑셀·PPT·워드 문서를 한 화면에서 보고 처리합니다. 메일은 답장 초안·첨부 받기, Jira는 댓글·상태 변경까지 할 수 있습니다. 처음에는 '제품별 진행상황'의 제품으로 프로젝트를 만들고, 키워드·에픽은 ✎에서 고칠 수 있습니다.",
+  "actions": [
+    {"id": "board", "label": "프로젝트", "auto": true, "timeout": 60, "fields": []},
+    {"id": "refresh", "label": "새로 확인", "hidden": true, "timeout": 3600, "progress": true, "progress_tab": "board"},
+    {"id": "save_project", "label": "프로젝트 저장", "hidden": true, "timeout": 30},
+    {"id": "delete_project", "label": "프로젝트 삭제", "hidden": true, "timeout": 30},
+    {"id": "move_project", "label": "프로젝트 순서", "hidden": true, "timeout": 30},
+    {"id": "schedule", "label": "아침 자동 확인 설정", "hidden": true, "timeout": 60},
+    {"id": "reorder", "label": "프로젝트 순서 바꾸기", "hidden": true, "timeout": 30},
+    {"id": "mark", "label": "할 일 표시", "hidden": true, "timeout": 30},
+    {"id": "add_todo", "label": "할 일 추가", "hidden": true, "timeout": 30},
+    {"id": "link_file", "label": "파일 연결", "hidden": true, "timeout": 30},
+    {"id": "open_file", "label": "파일 열기", "hidden": true, "timeout": 30, "bypass_busy": true},
+    {"id": "preview", "label": "파일 미리보기", "hidden": true, "timeout": 60, "bypass_busy": true},
+    {"id": "attachment", "label": "첨부 받기", "hidden": true, "timeout": 120},
+    {"id": "reply_draft", "label": "답장 초안", "hidden": true, "timeout": 600, "bypass_busy": true},
+    {"id": "jira_transitions", "label": "Jira 상태 목록", "hidden": true, "timeout": 30, "bypass_busy": true},
+    {"id": "jira_do", "label": "Jira 처리", "hidden": true, "timeout": 60}
+  ]
+}

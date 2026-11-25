@@ -183,10 +183,12 @@ def load():
     d.setdefault("products", [])
     if _api_on():
         d = _api_sync(d)
+    d["_scope_changed"] = apply_scope(d)
     return d
 
 
 def save(d):
+    d.pop("_scope_changed", None)
     _write_local(d)
     if _api_on():
         try:
@@ -198,6 +200,8 @@ def save(d):
 
 def board(d=None):
     d = d or load()
+    if d.pop("_scope_changed", False):
+        save(d)
     c = cfg()
     if DATA_DIR != LOCAL_DIR:
         store = "Google Drive · " + DATA
@@ -272,6 +276,64 @@ def move_product(pid, step):
     return d
 
 
+
+# ── DPP 1·2차 통합 ─────────────────────────────────────────
+MERGED_MEMO = "1·2차 통합 DPP — 차수 구분 없이 한 번 진행 (1차 DPP 칸 참고)"
+
+
+def dpp_merged(c):
+    """1차 DPP 칸이 '통합'(차수 없는 단일 DPP)인지: 메모에 '통합'이 있으면"""
+    return bool(c) and "통합" in (c.get("memo") or "")
+
+
+def sync_dpp(cells):
+    """단일 DPP(1·2차 통합)면 2차 DPP 칸을 1차와 같은 상태로 채우고 '통합' 안내. 직접 입력한 2차 칸은 그대로.
+    통합이 풀리면 자동으로 넣었던 2차 칸은 지운다"""
+    c1, c2 = cells.get("dpp"), cells.get("dpp2")
+    auto = bool(c2) and c2.get("src") == "통합"
+    if dpp_merged(c1):
+        if c2 and not auto:
+            return False
+        new = {"status": c1.get("status") or "", "date": c1.get("date") or "", "memo": MERGED_MEMO,
+               "link": c1.get("link") or "", "src": "통합", "at": now()}
+        if not c2 or any(c2.get(k) != new[k] for k in ("status", "date", "memo", "link")):
+            cells["dpp2"] = new
+            return True
+        return False
+    if auto:
+        cells.pop("dpp2", None)
+        return True
+    return False
+
+
+
+# ── 향지·제품 범위: 해외향 전용 단계는 국내향에서 '해당없음' (직접 입력한 칸은 그대로) ──
+def stage_scope(p, s):
+    """이 제품에 해당하는 단계인지. 아니면 이유 문자열"""
+    regs = s.get("regions")
+    if regs and (p.get("region") or "국내향") not in regs:
+        return f"{p.get('region') or '국내향'} 해당 없음 ({'·'.join(regs)} 전용 업무)"
+    if s.get("only") and not re.search(s["only"], f"{p.get('name', '')} {p.get('models', '')}"):
+        return "해당 제품 아님 (" + s.get("help", "").split("(")[-1].split(")")[0] + ")" if "만 해당" in s.get("help", "") else "해당 제품 아님"
+    return ""
+
+
+def apply_scope(d):
+    changed = False
+    for p in d.get("products", []):
+        cells = p.setdefault("cells", {})
+        for s in cfg()["stages"]:
+            why, cur = stage_scope(p, s), cells.get(s["id"])
+            if why:
+                if not cur or (cur.get("src") == "자동" and cur.get("memo") != why):
+                    cells[s["id"]] = {"status": "해당없음", "date": "", "memo": why, "link": "", "src": "자동", "at": now()}
+                    changed = True
+            elif cur and cur.get("src") == "자동" and cur.get("status") == "해당없음":
+                cells.pop(s["id"], None)  # 향지를 바꾸면 자동 '해당없음'은 풀어 줌
+                changed = True
+    return changed
+
+
 def save_cell(q):
     d = load()
     p = find(d, q.get("id"))
@@ -286,6 +348,8 @@ def save_cell(q):
         cells.pop(stage, None)  # 비우면 '미착수'(빈칸)로
     else:
         cells[stage] = cell
+    if stage == "dpp":
+        sync_dpp(cells)
     touch(d, p)
     save(d)
     return d
@@ -375,11 +439,32 @@ def jira_fill():
             sq = lambda k: re.sub(r"\s", "", k["fields"]["summary"]).lower()
             kids = [k for k in kids if (me_t and me_t in sq(k)) or not any(t and t in sq(k) for t in sibs)]
         cells = p.setdefault("cells", {})
+        # 'Jira 프로젝트 생성' 칸: 에픽(큰틀) 자체의 생성일 + 하위 문서 수 (직접 입력한 칸은 그대로)
+        cur = cells.get("jira_epic")
+        if any(s["id"] == "jira_epic" for s in stages) and (not cur or cur.get("src") == "Jira"):
+            try:
+                ep = jt.search(f"key = {epic}", "summary,created", 1)
+            except Exception:
+                ep = []
+            if ep:
+                new = {"status": "완료", "date": ep[0]["fields"]["created"][:10],
+                       "memo": f"{ep[0]['key']} {ep[0]['fields']['summary']} · 하위 문서 {len(kids)}건",
+                       "link": f"https://jira.coway.com/browse/{ep[0]['key']}", "src": "Jira", "at": now()}
+                if not cur or any(cur.get(k) != new[k] for k in ("status", "date", "memo")):
+                    cells["jira_epic"] = new
+                    filled += 1
+                    log.append(f"{p['name']} · Jira 프로젝트 생성 → 완료 ({new['date']})")
         for s in stages:
             keys = [k.lower().replace(" ", "") for k in s.get("jira") or []]
             if not keys:
                 continue
             hits = [k for k in kids if any(x in re.sub(r"\s", "", k["fields"]["summary"]).lower() for x in keys)]
+            single = False
+            if s["id"] == "dpp" and not hits:  # 차수 없는 'DPP' 문서 = 1·2차 통합 (2차 DPP 문서가 따로 없을 때)
+                sq = lambda k: re.sub(r"\s", "", k["fields"]["summary"]).lower()
+                plain = [k for k in kids if "dpp" in sq(k) and not re.search(r"[0-9]차dpp", sq(k))]
+                if plain and not any("2차dpp" in sq(k) for k in kids):
+                    hits, single = plain, True
             if not hits:
                 continue
             sts = [status_of(h) for h in hits]
@@ -388,7 +473,7 @@ def jira_fill():
             if cur and cur.get("src") != "Jira":
                 continue  # 직접 입력한 값 우선
             dates = [h["fields"].get("resolutiondate") or "" for h in hits if status_of(h) == "완료"]
-            new = {"status": st, "date": (max(dates)[:10] if st == "완료" and dates else ""), "memo": ", ".join(f"{h['key']} {h['fields']['summary']}" for h in hits[:4]) + (" 외" if len(hits) > 4 else ""),
+            new = {"status": st, "date": (max(dates)[:10] if st == "완료" and dates else ""), "memo": ("[1·2차 통합] " if single else "") + ", ".join(f"{h['key']} {h['fields']['summary']}" for h in hits[:4]) + (" 외" if len(hits) > 4 else ""),
                    "link": f"https://jira.coway.com/browse/{hits[0]['key']}" if len(hits) == 1 else
                    f"https://jira.coway.com/issues/?jql=" + "key%20in%20(" + ",".join(h["key"] for h in hits) + ")",
                    "src": "Jira", "at": now()}
@@ -396,6 +481,9 @@ def jira_fill():
                 cells[s["id"]] = new
                 filled += 1
                 log.append(f"{p['name']} · {s['label']} → {st} ({len(hits)}건)")
+        if sync_dpp(cells):
+            filled += 1
+            log.append(f"{p['name']} · 2차 DPP → 1·2차 통합으로 1차와 같게 표시")
         p["updated"] = now()
     progress(95, "저장 중")
     d["jira_at"] = now()
