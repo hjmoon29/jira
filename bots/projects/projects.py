@@ -444,6 +444,7 @@ def build_prompt(p, dd, mails, jira):
     for j in jira:
         items.append(f"### [jira:{j['key']}] Jira {j['key']} {j['summary']} (상태 {j['status']} · 담당 {j['assignee'] or '없음'} · 기한 {j['due'] or '없음'})\n"
                      + "\n".join(f"- {c['when']} {c['who']}: {c['what']}" for c in j["changes"]) + (f"\n설명: {j['_desc']}" if j["_desc"] else ""))
+    pname = re.sub(r'^\[[^\]]*\]\s*', '', p['name'])  # Python 3.9(Mac): f-string 안에 백슬래시를 못 써서 밖에서 계산
     return f"""당신은 코웨이 IoT기획팀 담당자의 업무 비서입니다. 오늘은 {today:%Y-%m-%d}({'월화수목금토일'[today.weekday()]})입니다.
 프로젝트 '{p['name']}' (모델: {p.get('models') or '미정'}, 에픽: {p.get('epic') or '없음'})에 새로 들어온 메일과 Jira 변경을 읽고 정리해 주세요.
 {('프로젝트 메모: ' + p['note']) if p.get('note') else ''}
@@ -467,7 +468,7 @@ def build_prompt(p, dd, mails, jira):
  "todos_new": [{{"title": "내가 해야 할 일 (동사로 끝나게, 구체적으로)", "due": "YYYY-MM-DD 또는 빈 문자열", "priority": "높음|보통|낮음", "src": "근거 자료 id (mail:… / jira:…)", "why": "누가 어떻게 요청했는지 한 줄"}}],
  "todos_update": [{{"id": "열린 할 일 id", "due": "바뀐 기한(없으면 생략)", "title": "바뀐 내용(없으면 생략)"}}],
  "todos_done": ["새 자료로 끝난 게 확실한 열린 할 일 id"]}}
-규칙: 제품 명칭은 프로젝트 이름의 표기(띄어쓰기 포함)를 그대로 쓴다 — 예: '{re.sub(r'^\[[^\]]*\]\s*', '', p['name'])}'.
+규칙: 제품 명칭은 프로젝트 이름의 표기(띄어쓰기 포함)를 그대로 쓴다 — 예: '{pname}'.
 규칙: 할 일은 '나(메일 받는 사람·Jira 담당자/보고자)'가 직접 해야 하는 것만. 이미 열린 할 일과 같은 일은 새로 만들지 말고 todos_update 로.
 단순 공유·참고 메일은 할 일 없이 mail_notes 만. 사람 이름에는 '님'. 사적인 내용은 적지 않는다. 존댓말 대신 간결한 개조식."""
 

@@ -27,6 +27,10 @@
 6. QA 대응 예약: 처음 예약을 저장할 때 10분마다 `bots/qa/scheduler.py` 를 실행하는 OS 작업을 자동 등록한다
    (Windows 작업 스케줄러 `WorkBotQA`, Mac launchd `com.workbot.qa`). 예약 목록·실행 기록은 PC마다 `runs/` 에 따로 있다.
 
+## 코드 작성 규칙 (두 PC 공통)
+- **Python 3.9 문법으로 쓴다**: Mac은 시스템 Python 3.9(`/usr/bin/python3`)로 돈다. Windows의 최신 Python에서만 되는 문법은 Mac에서 봇 전체가 안 열린다. 예: f-string `{}` 안에 백슬래시·같은 따옴표 금지(밖에서 변수로 계산), `match` 문, `X | Y` 타입 표기 금지.
+- 올리기 전 확인: `python3 -c "import ast,sys;[ast.parse(open(f,encoding='utf-8').read()) for f in sys.argv[1:]]" $(git ls-files '*.py')` (Mac에서 오류 없어야 함).
+
 ## 같이 쓰기 (동기화)
 - 화면의 **🔄 IoT업무봇 동기화**: 상태 확인 → **업데이트 받기**(다른 PC 변경 받기) / **변경 올리기**(이 PC 변경 올리기)
 - Jira 기본 하위 문서 목록·제품 등록(`bots/jira-tasks/config.json`)도 저장소에 들어 있어 두 PC가 같은 설정을 쓴다.

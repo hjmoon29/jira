@@ -56,6 +56,47 @@ def merge_id_list(ours, theirs, prefer_theirs=False):
     return out
 
 
+def merge_projects(ours, theirs):
+    """프로젝트 대응 projects.json: id(=제품 id) 기준 합집합. 같은 id 는 먼저 만든 쪽(사용자가 다듬어 온 원본)을 쓴다 —
+    다른 PC 가 처음 열면서 기본값으로 새로 만든 목록이 기존 설정을 덮지 않게."""
+    a, b = list(ours.get("projects") or []), list(theirs.get("projects") or [])
+    older_first = (theirs, ours) if min([p.get("created", "~") for p in b] or ["~"]) < min([p.get("created", "~") for p in a] or ["~"]) else (ours, theirs)
+    base, other = older_first
+    out = dict(other)
+    out.update(base)
+    plist = [dict(p) for p in base.get("projects") or []]
+    idx = {p.get("id"): i for i, p in enumerate(plist)}
+    for p in other.get("projects") or []:
+        i = idx.get(p.get("id"))
+        if i is None:
+            plist.append(dict(p))
+        elif (p.get("created") or "~") < (plist[i].get("created") or "~"):
+            plist[i] = dict(p)
+    out["projects"] = plist
+    return out
+
+
+def merge_project_data(ours, theirs):
+    """프로젝트별 data/<id>.json: 메일·Jira 는 id/key 합집합, 할 일은 merge_tasks 규칙, 요약·기준 시각은 최신 쪽"""
+    newer, older = (theirs, ours) if (theirs.get("summary_at") or "") > (ours.get("summary_at") or "") else (ours, theirs)
+    out = dict(older)
+    out.update(newer)
+    for k, key in (("mails", "id"), ("jira", "key")):
+        seen, lst = set(), []
+        for x in list(newer.get(k) or []) + list(older.get(k) or []):
+            kk = x.get(key) if isinstance(x, dict) else None
+            if kk is None or kk not in seen:
+                seen.add(kk)
+                lst.append(x)
+        out[k] = lst
+    out["todos"] = merge_tasks(list(newer.get("todos") or []), list(older.get("todos") or []))
+    for k in ("mail_at", "jira_at"):  # 늦게 읽은 쪽 기준이면 그 사이 자료를 놓칠 수 있어 이른 쪽
+        vals = [v for v in (ours.get(k), theirs.get(k)) if v]
+        if vals:
+            out[k] = min(vals)
+    return out
+
+
 def merge_jsonl(ours, theirs):
     """실행 기록(history.jsonl): 줄 합집합, 시각순"""
     seen, rows = set(), []
@@ -84,6 +125,10 @@ def merge_bytes(rel, ours, theirs, theirs_newer):
             m = merge_tasks(a, b)
         elif rel == "my-tasks/state.json" and isinstance(a, dict) and isinstance(b, dict):
             m = merge_state(a, b)
+        elif rel == "projects/projects.json" and isinstance(a, dict) and isinstance(b, dict):
+            m = merge_projects(a, b)
+        elif rel.startswith("projects/data/") and isinstance(a, dict) and isinstance(b, dict):
+            m = merge_project_data(a, b)
         elif isinstance(a, list) and isinstance(b, list) and all(isinstance(x, dict) and "id" in x for x in a + b):
             m = merge_id_list(a, b, prefer_theirs=theirs_newer)
         else:
