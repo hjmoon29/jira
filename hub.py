@@ -153,7 +153,7 @@ def auto_sync_once():
         res = run("sync", "pull", {})
         what = "받음"
     after = g("rev-parse", "HEAD").stdout.strip()
-    if res.get("ok") and before != after and g("diff", "--name-only", before, after, "--", "hub.py").stdout.strip():
+    if res.get("ok") and before != after and _hub_hash() != HUB_HASH:  # 지금 돌고 있는 것과 디스크의 hub.py 가 다를 때만
         AUTO_SYNC["restart"] = True  # 화면·봇은 바로 반영되지만 hub.py 자체는 다시 켜야 반영 → 아래에서 스스로 다시 켬
     AUTO_SYNC.update(at=time.strftime("%H:%M"), ok=bool(res.get("ok")),
                      text=f"변경 {what}" if res.get("ok") else f"자동 동기화 실패 — '{('변경 올리기' if what == '올림' else '업데이트 받기')}'에서 내용 확인")
@@ -177,6 +177,17 @@ def py39_check_all():
 
 
 SRV = {}
+
+
+def _hub_hash():
+    try:
+        import hashlib
+        return hashlib.md5(open(os.path.join(HERE, "hub.py"), "rb").read()).hexdigest()
+    except OSError:
+        return ""
+
+
+HUB_HASH = _hub_hash()  # 이 프로세스가 시작할 때의 hub.py
 
 
 def restart_self():
