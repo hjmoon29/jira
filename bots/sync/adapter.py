@@ -38,6 +38,16 @@ def changes():
 KIND = {"?": "추가", "A": "추가", "M": "수정", "D": "삭제", "R": "이름 변경", "C": "복사", "T": "수정", "U": "충돌"}
 
 
+def py39_problems(paths):
+    """두 PC 공통 규칙: 봇 코드는 Python 3.9 문법 (Mac 시스템 Python). 문제 줄 목록"""
+    try:
+        sys.path.insert(0, os.path.join(REPO, "bots"))
+        import py39check
+        return py39check.check([os.path.join(REPO, p) for p in paths if p.endswith(".py") and os.path.isfile(os.path.join(REPO, p))])
+    except Exception as e:  # noqa: BLE001  검사기 문제로 올리기를 막지는 않음
+        return []
+
+
 def pending():
     """올라갈 파일: [(종류, 경로, 이전 경로)] — .gitignore 로 빠지는 파일(runs/·백업·토큰)은 포함되지 않는다."""
     # git() 는 출력 앞뒤 공백을 지우므로(첫 줄 ' M' 의 공백이 사라져 경로가 잘림) 여기서는 그대로 받는다
@@ -247,6 +257,10 @@ def push(q):
         blocks, warns = scan(files)
         if blocks:  # 비밀값이 섞이면 커밋하지 않는다
             out(ok=False, text=report(files, blocks, warns), summary=f"올리기 중단: 비밀값 의심 {len(blocks)}건")
+        py = py39_problems([f[1] for f in files if f[0] != "삭제"])
+        if py:  # Mac(Python 3.9)에서 문법 오류가 나는 코드는 올리지 않는다 — 다른 PC 의 봇이 안 열림
+            out(ok=False, text="Mac(Python 3.9)에서 안 되는 문법이 있어 올리지 않았습니다. 아래 줄을 고친 뒤 다시 올리세요.\n\n" + "\n".join(py),
+                summary=f"올리기 중단: 3.9 문법 {len(py)}건")
         log.append(report(files, blocks, warns))
     if changes():
         git("add", "-A")

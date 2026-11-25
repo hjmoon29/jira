@@ -13,7 +13,7 @@ BOTS = os.path.join(HERE, "bots")
 RUNS = os.path.join(HERE, "runs")
 HISTORY = os.path.join(RUNS, "history.jsonl")
 PORT = int(os.environ.get("BOT_HUB_PORT", "8765"))
-KEY = secrets.token_urlsafe(24)
+KEY = os.environ.pop("BOT_HUB_KEY_RESTART", "") or secrets.token_urlsafe(24)  # 스스로 다시 켤 때는 같은 키 → 열려 있는 화면이 그대로 동작
 PROGRESS = os.path.join(RUNS, "progress")
 ACTIVE = {}  # (봇, 기능) → 시작 시각 — 화면을 새로 고쳐도 실행 중인 기능의 진행률을 다시 찾을 수 있게
 ACTIVE_LOCK = threading.Lock()
@@ -154,9 +154,53 @@ def auto_sync_once():
         what = "받음"
     after = g("rev-parse", "HEAD").stdout.strip()
     if res.get("ok") and before != after and g("diff", "--name-only", before, after, "--", "hub.py").stdout.strip():
-        AUTO_SYNC["restart"] = True  # 화면·봇은 바로 반영되지만 hub.py 자체는 껐다 켜야 반영
+        AUTO_SYNC["restart"] = True  # 화면·봇은 바로 반영되지만 hub.py 자체는 다시 켜야 반영 → 아래에서 스스로 다시 켬
     AUTO_SYNC.update(at=time.strftime("%H:%M"), ok=bool(res.get("ok")),
                      text=f"변경 {what}" if res.get("ok") else f"자동 동기화 실패 — '{('변경 올리기' if what == '올림' else '업데이트 받기')}'에서 내용 확인")
+    if res.get("ok") and before != after:
+        bad = py39_check_all()
+        if bad:  # 다른 PC 가 이 PC(Python 3.9)에서 안 되는 문법을 올림 → 봇이 안 열릴 수 있음을 알림
+            AUTO_SYNC.update(ok=False, text="받은 코드에 이 PC에서 안 되는 문법: " + " / ".join(bad[:3]) + " — Claude Code에 고쳐 달라고 하세요")
+            print("[자동 동기화] " + AUTO_SYNC["text"], flush=True)
+    if AUTO_SYNC["restart"]:
+        restart_self()
+
+
+def py39_check_all():
+    try:
+        sys.path.insert(0, os.path.join(HERE, "bots"))
+        import py39check
+        files = subprocess.run(["git", "ls-files", "*.py"], cwd=HERE, capture_output=True, text=True, encoding="utf-8").stdout.split()
+        return py39check.check([os.path.join(HERE, f) for f in files])
+    except Exception:  # noqa: BLE001
+        return []
+
+
+SRV = {}
+
+
+def restart_self():
+    """hub.py 가 바뀌면 스스로 다시 켠다: 같은 포트·같은 화면 키로 새 프로세스를 띄우고 이 프로세스는 끝낸다.
+    봇이 실행 중이면 다음 회차로 미룬다. (Windows 창 있는 실행은 창이 닫히고 업무봇은 창 없이 계속 돈다 — 끄기는 '종료' 파일)"""
+    with ACTIVE_LOCK:
+        if ACTIVE:
+            return
+    try:
+        bad = py39_check_all()
+        if bad:  # 새 hub.py 가 이 PC 에서 문법 오류면 다시 켜지 않고 지금 것으로 계속
+            return
+        args = [sys.executable] + (["-I"] if sys.flags.isolated else []) + [os.path.join(HERE, "hub.py"), "--no-browser", "--restarted"]
+        log = open(os.path.join(RUNS, "hub.log"), "a", encoding="utf-8")
+        kw = {"creationflags": 0x00000008 | 0x00000200} if os.name == "nt" else {"start_new_session": True}  # DETACHED_PROCESS | NEW_PROCESS_GROUP
+        subprocess.Popen(args, cwd=HERE, stdout=log, stderr=log, stdin=subprocess.DEVNULL, close_fds=True,
+                         env=dict(os.environ, BOT_HUB_KEY_RESTART=KEY), **kw)
+        print("[자동 동기화] IoT업무봇 본체가 바뀌어 다시 켭니다", flush=True)
+        if SRV.get("srv"):
+            SRV["srv"].server_close()
+    except Exception as e:  # noqa: BLE001
+        AUTO_SYNC.update(ok=False, text=f"다시 켜기 실패({e.__class__.__name__}) — 업무봇을 직접 껐다 켜 주세요")
+        return
+    os._exit(0)
 
 
 # 데이터(runs/) 동기화: Google Drive 'IoT업무봇/runs' 와 3분마다 + 봇 실행 직후 (BOT_HUB_DATA_SYNC_MIN, 0 이면 끔)
@@ -416,12 +460,19 @@ def main():
         except (AttributeError, ValueError):
             pass
     os.makedirs(RUNS, exist_ok=True)
-    try:
-        srv = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
-    except OSError:
+    srv = None
+    for i in range(60 if "--restarted" in sys.argv else 1):  # 스스로 다시 켠 경우: 이전 프로세스가 포트를 놓을 때까지 기다림
+        try:
+            srv = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
+            break
+        except OSError:
+            time.sleep(0.5)
+    if srv is None:
         print(f"이미 실행 중인 것 같습니다 → http://127.0.0.1:{PORT}")
-        webbrowser.open(f"http://127.0.0.1:{PORT}")
+        if "--restarted" not in sys.argv:
+            webbrowser.open(f"http://127.0.0.1:{PORT}")
         return
+    SRV["srv"] = srv
     url = f"http://127.0.0.1:{PORT}"
     print(f"IoT업무봇(Beta) 실행 중 → {url}  (끝내려면 이 창에서 Ctrl+C)")
     if "--no-browser" not in sys.argv:
