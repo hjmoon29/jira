@@ -2493,8 +2493,8 @@ $("pjside").addEventListener("drop", e => {
 });
 $("pjside").addEventListener("dragend", () => { pjDragId = ""; pjDropClear(); $("pjside").querySelectorAll(".dragging").forEach(x => x.classList.remove("dragging")); });
 
-// 처음 열 때: 마지막으로 보던 화면 (기본은 프로젝트 대응)
-(() => { let m = "pj"; try { m = localStorage.getItem("hub.mode") || "pj"; } catch (e) {} setMode(m); })();
+// 처음 열 때: 항상 프로젝트 대응 화면으로 시작 (사용자 요청 2026-11-25, 마지막 화면 기억 안 함)
+setMode("pj");
 </script>
 </body>
 </html>
