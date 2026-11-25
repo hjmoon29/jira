@@ -518,17 +518,12 @@ def create(name, log=print):
             if k in hc:
                 put.append((A1(OVERVIEW_TAB, data_rows[0], hc[k]), v))
         ms = ov.get("models") or [{"model": model}]
-        for i, m in enumerate(ms):
-            r = data_rows[min(i, len(data_rows) - 1)]
-            if i >= len(data_rows) - 1 and i < len(ms) - 1 and len(ms) > len(data_rows):  # 줄이 모자라면 마지막 줄에 모아 쓴다
-                rest = ms[i:]
-                for k, key in (("모델명", "model"), ("자재코드", "material"), ("POP코드", "pop")):
-                    if k in hc:
-                        put.append((A1(OVERVIEW_TAB, r, hc[k]), "\n".join(str(x.get(key) or "TBD") for x in rest)))
-                break
+        n = len(data_rows)
+        groups = [[m] for m in ms] if len(ms) <= n else [[m] for m in ms[:n - 1]] + [ms[n - 1:]]  # 줄이 모자라면 마지막 줄에 모아 쓴다
+        for r, grp in zip(data_rows, groups):
             for k, key in (("모델명", "model"), ("자재코드", "material"), ("POP코드", "pop")):
                 if k in hc:
-                    put.append((A1(OVERVIEW_TAB, r, hc[k]), m.get(key) or "TBD"))
+                    put.append((A1(OVERVIEW_TAB, r, hc[k]), "\n".join(str(x.get(key) or "TBD") for x in grp)))
     for lab, v in (("일시", "(TBD)"), ("대상 앱", ov.get("target_app")), ("해당 서비스 범위", ov.get("scope")), ("테스트 제외 항목", ov.get("excluded"))):
         t = find_label(rows, re.escape(lab))
         if t and v:
@@ -622,6 +617,11 @@ def create(name, log=print):
     progress(60, "내용 쓰는 중")
     for i in range(0, len(put), 500):
         qu.g("POST", f"{SHEETS}{sid}/values:batchUpdate", {"valueInputOption": "RAW", "data": [{"range": a, "values": [[v]]} for a, v in put[i:i + 500]]})
+    progress(85, "행 높이 맞추는 중")
+    try:  # 여러 줄 기대결과가 잘리지 않게 (실패해도 문서는 그대로 사용 가능)
+        wb(sid, [{"autoResizeDimensions": {"dimensions": {"sheetId": g, "dimension": "ROWS", "startIndex": D, "endIndex": D + N}}}])
+    except qu.BotError:
+        pass
     url = f"https://docs.google.com/spreadsheets/d/{sid}/edit"
     meta["doc"] = {"id": sid, "name": title, "url": url, "at": datetime.datetime.now().isoformat(timespec="seconds")}
     save(meta, data)
