@@ -1,0 +1,34 @@
+{
+  "tc_root_folder": "1ET-QxYJLs0S4Q9Wh-uVgDHMVFyEikjvS",
+  "folders": {
+    "water": "1dt69bGjycGqAAimU31Ze2MDaz7g42WBu",
+    "air": "1xB2HgqF8a2hyaVlkDH7yhEe5R-huusAK",
+    "sleep": "1ps_1KmdIJQHXEA_m0OZiWpZ4C84LyXwl",
+    "living": "1OocXQKkYbX6CCo0nafzqF1FavE3NG2LU"
+  },
+  "extra_ref_folders": {
+    "water": ["1pXFLQIYAC2Ad7Vft2q6xdtxwfGbKlq1l"]
+  },
+  "func_def_name": "CW_IoCare_제품_기능정의서",
+  "register_figma": "kx5biZMhB69Lrrsu2mucTe",
+  "categories": [
+    {"name": "정수기", "folder": "water", "tab": "정수기", "figma": ["7yQ2Op0kOp6T5uAWvVz4CT"],
+     "keys": ["정수기", "얼음", "아이콘", "노블", "워터", "빌라엠", "네온", "커피", "미신사", "western", "chp", "cp-", "chpi", "cpi", "hp-"]},
+    {"name": "청정기", "folder": "air", "tab": "청정기", "figma": ["ez0gcHoxhD2RP8NinDz0hs"],
+     "keys": ["청정기", "마이티", "airmega", "에어메가", "큐레이터", "ap-", "aph-"]},
+    {"name": "가습기/제습기", "folder": "air", "tab": "제/가습기", "figma": ["87iP1XRwOyKiZmWW2870CM"],
+     "keys": ["가습기", "제습기", "aid-", "dh-"]},
+    {"name": "에어컨", "folder": "air", "tab": "에어컨", "figma": ["StmfudC9g1IHVGFbossG34"],
+     "keys": ["에어컨", "acah"]},
+    {"name": "로봇청소기", "folder": "air", "tab": "로봇청소기", "figma": ["ScpPfifsRYdgpINwP6FFcN"],
+     "keys": ["로봇청소기", "청소기", "vcrt"]},
+    {"name": "매트리스", "folder": "sleep", "tab": "매트리스", "figma": ["cqHb1Abt601MqNEdscs5CY"],
+     "keys": ["매트리스", "슬립싱크", "cmss", "cmq", "cmk"]},
+    {"name": "모션베드", "folder": "sleep", "tab": "모션베드", "figma": ["KeNXCxOrYfxNwoltM2v9bG"],
+     "keys": ["모션베드", "베드"]},
+    {"name": "비데", "folder": "living", "tab": "개인형 비데", "figma": ["6SYhOKv0VU32O6aVRCy3nq"],
+     "keys": ["비데", "bas", "bash"]},
+    {"name": "음식물처리기", "folder": "living", "tab": "음식물처리기", "figma": ["PBzvQWKeftMt9XefiZ7dKS"],
+     "keys": ["음식물", "바이오키친", "wmb"]}
+  ]
+}

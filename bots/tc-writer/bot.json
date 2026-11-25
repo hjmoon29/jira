@@ -1,0 +1,101 @@
+{
+  "name": "통합테스트 TC 작성",
+  "icon": "🧪",
+  "order": 15,
+  "group": "기획 업무",
+  "tagline": "기능정의서·Figma 기반 통합테스트 TC 자동 작성",
+  "description": "제품명만 넣으면 최근 통합테스트 TC 문서(같은 제품군)를 양식으로 삼아, IoT기능정의서의 그 제품 열과 제품군 Figma 화면기획서를 자동으로 찾아 '제품-IoT App 연동 통합테스트' TC 초안을 만듭니다. 초안을 확인하고 [Google Drive에 문서 만들기]를 누르면 '10. [기획] 통합테스트 TC' 의 제품군 폴더(01_water·02_air·03_sleep·04_living)에 참고 문서 서식 그대로 새 구글 시트를 만들고 주소를 알려 줍니다. 원본 참고 문서는 건드리지 않습니다.",
+  "actions": [
+    {
+      "id": "draft",
+      "label": "TC 초안 만들기",
+      "button": "TC 초안 만들기",
+      "timeout": 3600,
+      "progress": true,
+      "fields": [
+        {
+          "name": "product",
+          "label": "제품명",
+          "type": "text",
+          "required": true,
+          "placeholder": "좌욕스파 비데",
+          "help": "IoT기능정의서의 제품 제목에 있는 이름으로 (예: 좌욕스파 비데, 말련향 아이콘 프로, 로봇청소기). 해외 파생 모델은 향지를 함께 적으면 그 열을 찾습니다."
+        },
+        {
+          "name": "model",
+          "label": "모델명 (선택 — 있으면 더 정확)",
+          "type": "text",
+          "placeholder": "BASH53-A"
+        },
+        {
+          "name": "category",
+          "label": "제품군",
+          "type": "select",
+          "options": ["자동", "정수기", "청정기", "가습기/제습기", "에어컨", "로봇청소기", "매트리스", "모션베드", "비데", "음식물처리기"],
+          "default": "자동",
+          "help": "자동 = 기능정의서에서 제품을 찾은 탭 기준. 제품군에 따라 참고 TC·Figma 파일·저장 폴더가 정해집니다."
+        },
+        {
+          "name": "author",
+          "label": "TC 작성자",
+          "type": "text",
+          "default": "문효준",
+          "placeholder": "최유나, 문효준"
+        },
+        {
+          "name": "with_register",
+          "label": "Figma 제품등록 화면기획서(00_03제품등록)도 함께 읽기",
+          "type": "checkbox",
+          "default": false,
+          "help": "페어링 TC를 새 등록 방식(BLE 콤보·Tuya 등)에 맞춰 자세히 쓰고 싶을 때. 자료가 늘어 1~3분 더 걸립니다."
+        },
+        {
+          "name": "ref_url",
+          "label": "참고 TC 문서 주소 (선택 — 비우면 같은 제품군의 최근 TC 자동)",
+          "type": "text",
+          "placeholder": "https://docs.google.com/spreadsheets/d/…/edit"
+        },
+        {
+          "name": "figma",
+          "label": "Figma 화면기획서 주소 (선택 — 비우면 제품군 02_제품 파일 자동, 한 줄에 하나)",
+          "type": "textarea",
+          "placeholder": "https://www.figma.com/design/6SYhOKv0VU32O6aVRCy3nq/?node-id=17002-60",
+          "help": "node-id가 붙은 주소면 그 페이지·섹션만 읽습니다. 표지·수정 이력·작업안/작업본·SPEC 제외 페이지는 읽지 않습니다."
+        },
+        {
+          "name": "drive",
+          "label": "추가 참고 자료 (선택 — 구글 시트·문서 주소, 한 줄에 하나)",
+          "type": "textarea",
+          "placeholder": "프로토콜 문서, 앱 설계 방향 정의서 등"
+        },
+        {
+          "name": "notes",
+          "label": "추가 요청 (선택)",
+          "type": "textarea",
+          "placeholder": "예) 좌욕 모드(힐링좌욕·버블스파) 제어 불가 조건도 TC로, 리포트는 제외",
+          "help": "초안은 보통 5~10분 걸립니다. Drive에는 [Google Drive에 문서 만들기]를 누르기 전까지 아무것도 만들지 않습니다."
+        }
+      ]
+    },
+    {
+      "id": "drafts",
+      "label": "초안·문서 목록",
+      "auto": true,
+      "timeout": 30,
+      "fields": []
+    },
+    {
+      "id": "open",
+      "label": "초안 열기",
+      "hidden": true,
+      "timeout": 30
+    },
+    {
+      "id": "create",
+      "label": "Google Drive에 문서 만들기",
+      "hidden": true,
+      "timeout": 600,
+      "progress": true
+    }
+  ]
+}
